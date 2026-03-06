@@ -78,10 +78,10 @@
           <NuxtLink class="item" to="/admin/materials" @click="closeDrawer">
             <span class="bullet"></span> Materials
           </NuxtLink>
-          <NuxtLink class="item" to="/admin/material-receipts" @click="closeDrawer">
+          <NuxtLink class="item" to="/admin/production" @click="closeDrawer">
             <span class="bullet"></span> รับเข้า (Receipts)
           </NuxtLink>
-          <NuxtLink class="item" to="/admin/stock/movements?type=material" @click="closeDrawer">
+          <NuxtLink class="item" to="/admin/movements" @click="closeDrawer">
             <span class="bullet"></span> เบิก/เคลื่อนไหว (Material)
           </NuxtLink>
         </div>

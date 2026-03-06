@@ -141,6 +141,103 @@ export const useInventory = () => {
     return { error: logError }
   
   }
+  const produceProduct = async (productId, qty, note = '') => {
+    const { data: { user } } = await client.auth.getUser()
+    const userId = user?.id
+
+    // จังหวะที่ 1: บันทึกข้อมูลลงตาราง production_logs
+    const { data: prodLog, error: prodError } = await client
+      .from('production_logs')
+      .insert({
+        product_id: productId,
+        qty_produced: qty,
+        produced_by: userId,
+        note: note
+      })
+      .select()
+      .single()
+
+    if (prodError) return { error: prodError }
+
+    // จังหวะที่ 2: ดึงสต็อกปัจจุบันเพื่อคำนวณยอดคงเหลือใหม่
+    const { data: product } = await client.from('products').select('stock_qty').eq('id', productId).single()
+    const currentStock = product?.stock_qty || 0
+    const newStock = currentStock + Math.abs(qty)
+
+    // จังหวะที่ 3: อัปเดตยอดสต็อกในตาราง products 
+    await client.from('products').update({
+      stock_qty: newStock,
+      updated_at: new Date().toISOString(),
+      updated_by: userId
+    }).eq('id', productId)
+
+    // จังหวะที่ 4: บันทึกประวัติลง stock_movements
+    const { error: moveError } = await client.from('stock_movements').insert({
+      item_type: 'product',
+      movement_type: 'produce_in',     // ⭐️ ตรงตาม Constraint รับของเข้าจากการผลิต
+      ref_table: 'production_logs',    // ⭐️ อ้างอิงตาราง production_logs
+      ref_id: prodLog.id,              // ⭐️ เชื่อมโยง ID ของบิลผลิตที่เพิ่งสร้าง
+      product_id: productId,
+      qty_in: Math.abs(qty),
+      qty_out: 0,
+      balance_after: newStock,
+      created_by: userId
+    })
+
+    return { error: moveError, data: prodLog }
+  }
+
+  // ==========================================
+  // ฟังก์ชันที่ 2: ขายออก (ลดสต็อก)
+  // ==========================================
+  const recordSale = async (productId, qty) => {
+    const { data: { user } } = await client.auth.getUser()
+    const userId = user?.id
+
+    const { data: product } = await client.from('products').select('stock_qty').eq('id', productId).single()
+    const currentStock = product?.stock_qty || 0
+    const newStock = currentStock - Math.abs(qty)
+
+    if (newStock < 0) {
+      return { error: { message: 'สต็อกคงเหลือไม่พอขายครับ!' } }
+    }
+
+    // อัปเดตยอดสต็อกในตาราง products
+    await client.from('products').update({
+      stock_qty: newStock,
+      updated_at: new Date().toISOString(),
+      updated_by: userId
+    }).eq('id', productId)
+
+    // บันทึกประวัติลง stock_movements
+    const { error: moveError } = await client.from('stock_movements').insert({
+      item_type: 'product',
+      movement_type: 'sale_out', // ⭐️ ตรงตาม Constraint การขายออก
+      ref_table: 'manual',       // ⭐️ ใช้ manual ไปก่อน (ถ้าอนาคตมีระบบออเดอร์ค่อยเปลี่ยนเป็น 'orders')
+      ref_id: null,
+      product_id: productId,
+      qty_in: 0,
+      qty_out: Math.abs(qty),
+      balance_after: newStock,
+      created_by: userId
+    })
+
+    return { error: moveError }
+  }
+
+  // ==========================================
+  // ฟังก์ชันที่ 3: ดึงประวัติความเคลื่อนไหว (Statement)
+  // ==========================================
+  const getProductMovements = async (productId) => {
+    // ดึงประวัติทั้งหมดของสินค้านั้นๆ เรียงจากใหม่ไปเก่า
+    const { data, error } = await client
+      .from('stock_movements')
+      .select('*')
+      .eq('product_id', productId)
+      .order('created_at', { ascending: false })
+
+    return { data, error }
+  }
 
   return { 
     getInventoryData, 
@@ -148,6 +245,9 @@ export const useInventory = () => {
     getProductById, 
     addProduct, 
     updateProduct ,
-    adjustProductStock
+    adjustProductStock,
+    produceProduct,      
+    recordSale,         
+    getProductMovements
   }
 }
