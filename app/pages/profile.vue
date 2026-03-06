@@ -4,9 +4,23 @@
       <h2>แก้ไขโปรไฟล์</h2>
       <p class="subtitle">จัดการข้อมูลส่วนตัวของคุณ</p>
 
-      <div v-if="pending">กำลังโหลดข้อมูล...</div>
-      
+      <div v-if="isProfileLoading">กำลังโหลดข้อมูล...</div>
+
       <form v-else @submit.prevent="handleUpdate">
+
+        <div class="input-group">
+          <label>ระดับสิทธิ์ผู้ใช้งาน (Role)</label>
+          <div class="role-badge">
+            <span v-if="isRoleLoading">กำลังตรวจสอบ...</span>
+
+            <span v-else-if="role">{{ role.toUpperCase() }}</span>
+
+            <span v-else style="color: red;">
+              ไม่พบข้อมูลสิทธิ์ (Session ID: {{ user ? user.id : 'ไม่มี User ล็อกอิน' }})
+            </span>
+          </div>
+        </div>
+
         <div class="input-group">
           <label>ชื่อ-นามสกุล</label>
           <input v-model="profileData.full_name" type="text" required />
@@ -26,8 +40,21 @@
 </template>
 
 <script setup>
-const { getProfile, updateProfile } = useProfile() // เรียกใช้ Logic จาก composable
-const { data: profile, pending } = await getProfile()
+
+middleware: [
+  function (to, from) {
+    const user = useSupabaseUser()
+    // ถ้าไม่มีข้อมูล User ให้เด้งกลับไปหน้า Login
+    if (!user.value) {
+      return navigateTo('/login')
+    }
+  }
+]
+
+const { getProfile, updateProfile } = useProfile()// เรียกใช้ Logic จาก composable
+const { data: profile, pending: isProfileLoading } = await getProfile()
+const { role, isRoleLoading } = useUserRole()
+
 const loading = ref(false)
 
 // เก็บข้อมูลใน Reactive state
@@ -54,8 +81,33 @@ const handleUpdate = async () => {
 
 <style scoped>
 /* ใส่ CSS เดิมที่คุณมีได้เลยครับ */
-.auth-container { display: flex; justify-content: center; align-items: center; min-height: 80vh; }
-.auth-card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
-.input-group { margin-bottom: 1rem; }
-.btn-primary { width: 100%; padding: 10px; background: #4f46e5; color: white; border: none; border-radius: 6px; cursor: pointer; }
+.auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 80vh;
+}
+
+.auth-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+}
+
+.input-group {
+  margin-bottom: 1rem;
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 10px;
+  background: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
 </style>

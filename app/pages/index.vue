@@ -28,6 +28,26 @@
           </div>
         </div>
       </section>
+      <section class="featured">
+        <h2>รายการสินค้าแนะนำ</h2>
+        
+        <div v-if="pending" class="status-msg">กำลังโหลดสินค้า...</div>
+        
+        <div v-else-if="error" class="status-msg error">
+          เกิดข้อผิดพลาด: {{ error.message }}
+        </div>
+
+        <div v-else class="product-grid">
+          <div v-for="user in users" :key="user.id" class="product-card">
+              <h3>{{user.sta }}</h3>
+              <p class="sku">เมล:{{ user.email }}</p>
+              <div class="stock-tag">สถานะ: {{ user.role }}</div>
+            </div>
+          </div>
+        
+      </section>
+      
+      
     </main>
   </div>
 </template>
@@ -43,9 +63,15 @@ const { user, logout } = useAuth()
 
 // 2. ดึงฟังก์ชันจัดการสินค้าจาก Composable
 const { getFeaturedProducts } = useProducts()
+const { getAllUsers } = useUsers()
+const { role, isRoleLoading } = useUserRole()
 
 // 3. ดึงข้อมูลสินค้า 4 รายการล่าสุด
-const { data: products, pending, error } = await getFeaturedProducts(4)
+const { data: products, pending, error} = await getFeaturedProducts(4)
+
+watch(user, () => {
+  if (refreshUsers) refreshUsers()
+})
 </script>
 
 <style scoped>

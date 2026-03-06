@@ -1,20 +1,36 @@
-// app/composables/useUserRole.ts
 export const useUserRole = () => {
-  const user = useSupabaseUser()
   const client = useSupabaseClient()
+  const role = ref(null)
+  const isRoleLoading = ref(true)
 
-  const getRole = () => {
-    return useAsyncData('user-role', async () => {
-      if (!user.value) return null
-      // ดึงจากตาราง users ตามฐานข้อมูลของคุณ
-      const { data } = await client
-        .from('users')
-        .select('role')
-        .eq('email', user.value.email)
-        .single()
-      return data?.role // จะคืนค่า 'admin' หรือ 'customer'
-    }, { watch: [user] })
+  const fetchRole = async () => {
+    isRoleLoading.value = true
+    const { data: { user } } = await client.auth.getUser()
+    
+    if (!user) {
+      role.value = null
+      isRoleLoading.value = false
+      return
+    }
+
+    const { data, error } = await client
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    role.value = error ? null : data?.role
+    isRoleLoading.value = false
   }
 
-  return { getRole }
+  // ⭐️ เคล็ดลับอยู่ที่ตรงนี้: ดักฟังเหตุการณ์การล็อกอิน/เอาต์โดยตรงจาก Supabase Client
+  // มันจะทำงานทันทีที่สถานะ Auth เปลี่ยน ไม่ต้องรอ watch() จาก Nuxt
+  client.auth.onAuthStateChange((event, session) => {
+    fetchRole()
+  })
+
+  // โหลดครั้งแรก
+  fetchRole()
+
+  return { role, isRoleLoading }
 }

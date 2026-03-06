@@ -1,22 +1,26 @@
-// app/middleware/auth.global.ts
+// middleware/auth.ts
 export default defineNuxtRouteMiddleware(async (to) => {
-  const user = useSupabaseUser()
-  const { getRole } = useUserRole()
-  const { data: role } = await getRole()
+  const client = useSupabaseClient()
 
-  // 1. ถ้ายังไม่ได้ล็อกอิน และพยายามเข้าหน้าอื่นที่ไม่ใช่หน้าสาธารณะ
-  const publicPages = ['/', '/login', '/products']
-  if (!user.value && !publicPages.includes(to.path)) {
+  // 1. บังคับดึงข้อมูล User จาก Token โดยตรง (แก้ปัญหา undefined ชั่วขณะ)
+  const { data: { user }, error: authError } = await client.auth.getUser()
+
+  // ถ้าเกิด Error หรือยังไม่ได้ล็อกอิน ให้ไปหน้า Login
+  if (authError || !user) {
     return navigateTo('/login')
   }
 
-  // 2. ถ้าล็อกอินแล้วเป็น Admin และกำลังจะไปหน้าแรก ให้ส่งไปหลังบ้าน
-  if (user.value && role.value === 'admin' && to.path === '/') {
-    return navigateTo('/dashboard')
-  }
+  // 2. เช็คสิทธิ์การเข้า Dashboard
+  if (to.path.startsWith('/dashboard')) {
+    const { data, error } = await client
+      .from('users') 
+      .select('role')
+      .eq('id', user.id) // ใช้ user.id จาก getUser() จะได้ค่า ID ที่ชัวร์ 100%
+      .single()
 
-  // 3. ป้องกันคนไม่ใช่ Admin แอบเข้าหน้า Dashboard
-  if (to.path.startsWith('/dashboard') && role.value !== 'admin') {
-    return navigateTo('/')
+    // ถ้า Query พลาด, ไม่มีข้อมูล, หรือบทบาทไม่ใช่ 'admin' ให้ตีกลับไปหน้าแรก
+    if (error || !data || data.role !== 'admin') {
+      return navigateTo('/')
+    }
   }
 })

@@ -28,13 +28,13 @@
   </div>
 </template>
 
-<script setup>
+<<script setup>
 const client = useSupabaseClient()
 const email = ref('')
 const password = ref('')
 const phone = ref('')
 const loading = ref(false)
-const isRegistering = ref(false) // เพิ่มสถานะเพื่อสลับหน้า Login/Register
+const isRegistering = ref(false)
 
 const handleAction = async (type) => {
   if (!email.value || !password.value) return alert('กรุณากรอกข้อมูลให้ครบ')
@@ -49,8 +49,11 @@ const handleAction = async (type) => {
       })
       if (error) throw error
       
+      // ⭐️ บังคับล้างแคชข้อมูลเดิมทั้งหมดของ Nuxt ทันทีที่ล็อกอินผ่าน
+      clearNuxtData() 
+      
       alert('เข้าสู่ระบบสำเร็จ!')
-      navigateTo('/') // ไปหน้า index ตามที่คุณต้องการ
+      navigateTo('/') 
       
     } else {
       // 2. การสมัครสมาชิก
@@ -58,7 +61,6 @@ const handleAction = async (type) => {
         email: email.value,
         password: password.value,
         options: {
-          // ส่งข้อมูลไปให้ Trigger ใน Database ทำงานต่อ
           data: {
             full_name: 'New Member',
             phone: phone.value
@@ -67,8 +69,11 @@ const handleAction = async (type) => {
       })
       if (authError) throw authError
 
+      // ⭐️ บังคับล้างแคชข้อมูลเดิมทั้งหมดของ Nuxt ทันทีที่สมัครและล็อกอินอัตโนมัติผ่าน
+      clearNuxtData()
+
       alert('สมัครสมาชิกสำเร็จ! ข้อมูลโปรไฟล์และรหัสสมาชิกถูกสร้างแล้ว')
-      navigateTo('/') // สมัครเสร็จแล้วไปหน้าแรก
+      navigateTo('/') 
     }
   } catch (err) {
     alert('เกิดข้อผิดพลาด: ' + err.message)

@@ -31,13 +31,14 @@
             <button @click="isMenuOpen = false">✕</button>
           </div>
           <div class="menu-list">
-            <NuxtLink v-if="role === 'admin'" to="/dashboard" class="menu-item admin-link" @click="isMenuOpen = false">
+            <NuxtLink v-if="role == 'admin','staff'" to="/admin" class="menu-item admin-link" @click="isMenuOpen = false">
               📊 Dashboard คลังสินค้า
             </NuxtLink>
 
             <NuxtLink to="/profile" class="menu-item" @click="isMenuOpen = false">
               👤 แก้ไขโปรไฟล์
             </NuxtLink>
+            
 
             <button @click="handleLogout" class="menu-item logout">
               🚪 ออกจากระบบ
@@ -50,22 +51,42 @@
 </template>
 
 <script setup>
-// ประกาศสถานะการเปิด/ปิดเมนู
+const client = useSupabaseClient()
+const user = useSupabaseUser()
+
+// เรียกใช้งาน Composable ที่เราสร้างไว้
+const { role, isRoleLoading } = useUserRole()
+
 const isMenuOpen = ref(false)
 
-// เรียกใช้งาน User และ Role
-const user = useSupabaseUser()
-const { getRole } = useUserRole()
-const { data: role } = await getRole()
+// ใช้ watchEffect เพื่อ log ค่า ID ทันทีที่มีการเปลี่ยนแปลง
+watchEffect(() => {
+  if (user.value) {
+    console.log("ID ที่กำลังใช้หาข้อมูลคือ:", user.value.id)
+  }
+})
 
-// ฟังก์ชันออกจากระบบ
-const client = useSupabaseClient()
+// ฟังก์ชันสำหรับล็อกเอาต์
 const handleLogout = async () => {
-  isMenuOpen.value = false
-  await client.auth.signOut()
-  navigateTo('/login')
+  isMenuOpen.value = false // ปิดการแสดงผลเมนู (ถ้ามีการใช้งานตัวแปรนี้)
+
+  // 1. สั่งออกจากระบบ Supabase
+  const { error } = await client.auth.signOut()
+  
+  if (!error) {
+    // 2. ⭐️ บังคับล้างแคชข้อมูลเก่าทั้งหมด (ลบ Role และข้อมูล Profile ออกจากหน่วยความจำ Nuxt ทันที)
+    clearNuxtData()
+
+    // 3. นำทางกลับไปที่หน้า Login
+    navigateTo('/login')
+  } else {
+    console.error("เกิดข้อผิดพลาดในการออกจากระบบ:", error.message)
+  }
 }
 </script>
+
+
+
 
 <style scoped>
 .navbar-container {
