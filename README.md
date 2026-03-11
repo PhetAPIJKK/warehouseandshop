@@ -5,8 +5,27 @@ Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduct
 install node 
 https://nodejs.org/en/download
 
-รัน npm แล้ว 
-ต่อ npx nuxt dev
+## Setup env
+
+Make sure to install dependencies:
+
+```bash
+# npm
+npm install
+
+```bash
+# install nuxt
+npx nuxt prepare
+
+```bash
+# install nuxt
+npx nuxt prepare
+
+```bash
+# run npm 
+npx run dev or npm nuxt dev
+
+
 
 ## Setup
 
