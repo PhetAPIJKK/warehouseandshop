@@ -5,6 +5,9 @@ Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduct
 install node 
 https://nodejs.org/en/download
 
+รัน npm แล้ว 
+ต่อ npx nuxt dev
+
 ## Setup
 
 Make sure to install dependencies:
