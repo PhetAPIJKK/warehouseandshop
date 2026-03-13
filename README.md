@@ -5,26 +5,42 @@ Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduct
 install node 
 (https://nodejs.org/en/download)
 
-## Setup env
+Environment Setup and Database Connection
+To ensure the security of your credentials and a seamless connection to Supabase, follow these steps to configure your environment variables.
+1. Create an Environment File
+Create a file named .env in the root directory of your project. This file will store your sensitive API keys and should never be committed to version control.
+bash
+# In your terminal
+touch .env
+Use code with caution.
 
-Make sure to install dependencies:
+2. Configure Supabase Credentials
+Add your Supabase project credentials to the .env file using the following format:
+env
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_ANON_KEY=your-public-anon-key
+Use code with caution.
 
-```bash
-# npm
-npm install
+Note: You can find these values in your Supabase dashboard under Settings > API.
+3. Connect to the Database
+Use the official Supabase client library to initialize the connection in your application.
+For JavaScript/TypeScript:
+javascript
+import { createClient } from '@supabase/supabase-js'
 
-```bash
-# install nuxt
-npx nuxt prepare
+const supabaseUrl = process.env.SUPABASE_URL
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY
 
-```bash
-# install nuxt
-npx nuxt prepare
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+Use code with caution.
 
-```bash
-# run npm 
-npx run dev or npm nuxt dev
+Security Best Practice
+Ensure that your .env file is ignored by Git to prevent leaking your tokens. Add the following line to your .gitignore file:
+text
+.env
+Use code with caution.
 
+Would you like me to add a section for Python or include instructions on how to retrieve these keys from the Supabase dashboard?
 
 
 ## Setup
