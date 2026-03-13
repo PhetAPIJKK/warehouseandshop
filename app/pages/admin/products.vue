@@ -21,29 +21,46 @@
     </div>
 
     <div v-else class="table-card">
-      <table class="product-table">
-        <thead>
-          <tr>
-            <th>ชื่อสินค้า</th>
-            <th>จำนวนคงเหลือ</th>
-            <th>ราคาขาย</th>
-            <th>จัดการ</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in products" :key="item.id">
-            <td class="font-bold">{{ item.name }}</td>
-            <td :class="{ 'stock-warning': item.stock_qty < 5 }">
-              {{ item.stock_qty }} ชิ้น
-            </td>
-            <td>฿{{ item.sell_price.toLocaleString() }}</td>
-            <td>
-              <NuxtLink :to="`/admin/stock-${item.id}`" class="btn-edit">ปรับสต็อก</NuxtLink>,
-              <NuxtLink :to="`/admin/editPd-${item.id}`" class="btn-edit">แก้ไข</NuxtLink>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="table-responsive"> <table class="data-table"> <thead>
+            <tr>
+              <th style="width: 70px;">รูปภาพ</th>
+              <th>SKU</th>
+              <th>ชื่อสินค้า</th>
+              <th class="text-right">จำนวนคงเหลือ</th> <th class="text-right">ราคาขาย</th>
+              <th class="text-center">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in products" :key="item.id">
+              <td>
+                <img 
+                  v-if="item.image_url" 
+                  :src="item.image_url" 
+                  alt="Product Image" 
+                  style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0;"
+                />
+                <div v-else style="width: 50px; height: 50px; background: #f1f5f9; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: #94a3b8;">
+                  ไม่มีรูป
+                </div>
+              </td>
+              
+              <td>{{ item.sku || '-' }}</td>
+              <td class="font-bold">{{ item.name }}</td>
+              
+              <td class="text-right" :class="{ 'stock-warning': item.stock_qty < 5 }">
+                {{ item.stock_qty || 0 }} ชิ้น
+              </td>
+              
+              <td class="text-right">฿{{ item.sell_price ? item.sell_price.toLocaleString() : '0' }}</td>
+              
+              <td class="text-center">
+                <NuxtLink :to="`/admin/stock-${item.id}`" class="btn-edit" style="margin-right: 12px;">ปรับสต็อก</NuxtLink>
+                <NuxtLink :to="`/admin/editPd-${item.id}`" class="btn-edit">แก้ไข</NuxtLink>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>
@@ -60,21 +77,8 @@ const { data: products, pending, error } = await getInventoryData()
 </script>
 
 <style scoped>
-.products-container { padding: 1rem; }
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-.title { font-size: 1.5rem; font-weight: 900; margin: 0; }
-.subtitle { color: #64748b; margin-top: 4px; }
-.btn-primary { background: #0f172a; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; }
-
-.table-card { background: white; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
-.product-table { width: 100%; border-collapse: collapse; text-align: left; }
-.product-table th { background: #f8fafc; padding: 1rem; color: #475569; border-bottom: 1px solid #e2e8f0; }
-.product-table td { padding: 1rem; border-bottom: 1px solid #f1f5f9; }
-
-/* Visual feedback */
-.stock-warning { color: #ef4444; font-weight: 700; }
-.btn-edit { color: #38bdf8; text-decoration: none; font-weight: 600; }
-.btn-edit:hover { text-decoration: underline; }
-
-.loading-state, .error-state, .empty-state { padding: 3rem; text-align: center; color: #64748b; background: white; border-radius: 8px; border: 1px dashed #cbd5e1; }
+/* หมายเหตุ: ถ้าคุณนำ @import นี้ไปใส่ในไฟล์ app/layouts/admin.vue ตามที่เราคุยกันแล้ว 
+  คุณสามารถลบแท็ก <style scoped> ด้านล่างนี้ทิ้งได้เลยครับ แต่ถ้ายังไม่ได้ย้าย ก็ปล่อยไว้แบบนี้ได้ครับ 
+*/
+@import '~/assets/css/admin-style.css';
 </style>

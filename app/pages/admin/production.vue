@@ -42,7 +42,7 @@
         </div>
 
         <div class="form-actions full-width">
-          <button type="submit" :disabled="saving || !form.product_id || form.qty <= 0" class="btn-primary">
+          <button type="submit" :disabled="saving || !form.product_id || form.qty <= 0" class="btn-success">
             {{ saving ? 'กำลังบันทึก...' : 'บันทึกการผลิตสินค้า' }}
           </button>
         </div>
@@ -105,22 +105,5 @@ const submitProduction = async () => {
 </script>
 
 <style scoped>
-.form-container { max-width: 800px; margin: 0 auto; padding: 2rem; }
-.page-header { margin-bottom: 1.5rem; }
-.title { font-size: 1.5rem; font-weight: bold; color: #1e293b; }
-.form-card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
-
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-.form-group { display: flex; flex-direction: column; gap: 0.5rem; }
-.full-width { grid-column: 1 / -1; }
-
-label { font-size: 0.95rem; font-weight: 600; color: #475569; }
-.input-field { padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem; width: 100%; box-sizing: border-box; }
-.input-field:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
-
-.form-actions { margin-top: 1rem; display: flex; justify-content: flex-end; padding-top: 1rem; border-top: 1px solid #e2e8f0; }
-.btn-primary { background: #10b981; color: white; padding: 0.75rem 2rem; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; width: 100%; }
-.btn-primary:hover:not(:disabled) { background: #059669; }
-.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-.loading-state { text-align: center; color: #64748b; padding: 2rem 0; }
+@import '~/assets/css/admin-style.css';
 </style>

@@ -9,7 +9,8 @@
     <div v-else-if="error" class="status-msg error">เกิดข้อผิดพลาด: {{ error.message }}</div>
 
     <div v-else class="product-grid">
-      <div v-for="item in products" :key="item.id" class="product-card">
+
+      <NuxtLink v-for="item in products" :key="item.id" :to="`/product/${item.id}`" class="product-card">
         <div class="product-image">
           <img :src="item.image_url || 'https://via.placeholder.com/150'" :alt="item.name" />
         </div>
@@ -22,7 +23,8 @@
           <p class="price">฿{{ item.sell_price?.toLocaleString() }}</p>
           <div class="stock-info">คงเหลือ: {{ item.stock_qty }}</div>
         </div>
-      </div>
+      </NuxtLink>
+
     </div>
   </main>
 </template>
@@ -38,10 +40,27 @@ const { data: products, pending, error } = await getAllProducts()
 </script>
 
 <style scoped>
-.container { max-width: 1200px; margin: 0 auto; padding: 3rem 1.5rem; }
-.page-header { text-align: center; margin-bottom: 3rem; }
-.title { font-size: 2rem; font-weight: 800; color: #1a1a1a; }
-.subtitle { color: #666; margin-top: 0.5rem; }
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+}
+
+.page-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #1a1a1a;
+}
+
+.subtitle {
+  color: #666;
+  margin-top: 0.5rem;
+}
 
 /* Product Grid ตามดีไซน์ที่คุณชอบ */
 .product-grid {
@@ -58,18 +77,68 @@ const { data: products, pending, error } = await getAllProducts()
   transition: transform 0.3s ease;
 }
 
-.product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+.product-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+}
 
-.product-image { width: 100%; height: 220px; background: #fafafa; }
-.product-image img { width: 100%; height: 100%; object-fit: contain; padding: 1rem; }
+.product-image {
+  width: 100%;
+  height: 220px;
+  background: #fafafa;
+}
 
-.product-details { padding: 1.5rem; text-align: center; }
-.name { font-size: 1.1rem; font-weight: 700; color: #333; margin-bottom: 0.5rem; }
-.category { font-size: 0.85rem; color: #4f46e5; margin-bottom: 0.5rem; }
-.sku { font-size: 0.8rem; color: #999; margin-bottom: 1rem; }
-.price { font-size: 1.3rem; font-weight: 800; color: #4f46e5; margin-bottom: 0.5rem; }
-.stock-info { font-size: 0.9rem; color: #10b981; font-weight: 600; }
+.product-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 1rem;
+}
 
-.status-msg { text-align: center; padding: 5rem; color: #666; }
-.error { color: #ef4444; }
+.product-details {
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+.category {
+  font-size: 0.85rem;
+  color: #4f46e5;
+  margin-bottom: 0.5rem;
+}
+
+.sku {
+  font-size: 0.8rem;
+  color: #999;
+  margin-bottom: 1rem;
+}
+
+.price {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #4f46e5;
+  margin-bottom: 0.5rem;
+}
+
+.stock-info {
+  font-size: 0.9rem;
+  color: #10b981;
+  font-weight: 600;
+}
+
+.status-msg {
+  text-align: center;
+  padding: 5rem;
+  color: #666;
+}
+
+.error {
+  color: #ef4444;
+}
 </style>

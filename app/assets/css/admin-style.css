@@ -1,0 +1,103 @@
+/* =========================================
+   1. โครงสร้างหน้าเว็บหลัก (Layout & Containers)
+========================================= */
+.page-container, .products-container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+.form-container { max-width: 800px; margin: 0 auto; padding: 2rem; }
+
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+.title { font-size: 1.5rem; font-weight: bold; color: #1e293b; margin: 0; }
+.subtitle { color: #64748b; margin-top: 4px; font-size: 0.95rem; }
+
+/* =========================================
+   2. การ์ดและตาราง (Cards & Tables)
+========================================= */
+.card, .form-card, .table-card { 
+  background: white; 
+  border-radius: 12px; 
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); 
+  border: 1px solid #e2e8f0; 
+  margin-bottom: 1.5rem; 
+  overflow: hidden;
+}
+.card { padding: 1.5rem; }
+.form-card { padding: 2rem; }
+.card-title { margin-top: 0; margin-bottom: 1.5rem; font-size: 1.25rem; color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; }
+
+/* จัดการ Layout ของหน้า movements */
+.content-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem; align-items: start; }
+
+/* ยุบรวม Table ของหน้าสินค้าและ movement เข้าด้วยกัน */
+.table-responsive { overflow-x: auto; }
+.data-table { width: 100%; border-collapse: collapse; min-width: 600px; text-align: left; }
+.data-table th { background: #f8fafc; padding: 1rem; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0; }
+.data-table td { padding: 1rem; border-bottom: 1px solid #f1f5f9; }
+
+/* =========================================
+   3. ฟอร์มและอินพุต (Forms & Inputs)
+========================================= */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+.form-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+.full-width { grid-column: 1 / -1; }
+
+label { font-size: 0.95rem; font-weight: 600; color: #475569; }
+.input-field { padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem; width: 100%; box-sizing: border-box; transition: border 0.2s; }
+.input-field:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+.disabled-input { background-color: #f1f5f9; color: #94a3b8; cursor: not-allowed; border-color: #e2e8f0; }
+
+.image-preview-container { margin-top: 10px; display: flex; justify-content: center; align-items: center; }
+.image-preview { width: 100px; height: 100px; border-radius: 8px; border: 1px solid #cbd5e1; object-fit: cover; }
+
+/* =========================================
+   4. ปุ่ม (Buttons)
+========================================= */
+.form-actions { margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; }
+
+.btn-primary, .btn-success, .btn-danger { color: white; padding: 0.75rem 2rem; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; text-decoration: none; text-align: center; }
+.btn-primary:disabled, .btn-success:disabled, .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* สีของปุ่มแต่ละประเภท */
+.btn-primary { background: #0f172a; }
+.btn-primary:hover:not(:disabled) { background: #1e293b; }
+
+.btn-success { background: #10b981; } /* แยกปุ่มสีเขียวออกมา */
+.btn-success:hover:not(:disabled) { background: #059669; }
+
+.btn-danger { background: #ef4444; width: 100%; } /* ปุ่มสีแดงสำหรับหน้าขาย */
+.btn-danger:hover:not(:disabled) { background: #dc2626; }
+
+.btn-cancel { color: #64748b; text-decoration: none; padding: 0.75rem 1.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; }
+.btn-cancel:hover { background: #f8fafc; color: #0f172a; }
+
+.btn-edit { color: #38bdf8; text-decoration: none; font-weight: 600; }
+.btn-edit:hover { text-decoration: underline; }
+
+/* =========================================
+   5. ข้อความสถานะ ป้ายกำกับ (Text & Badges)
+========================================= */
+.text-muted { color: #64748b; font-size: 0.85rem; }
+.text-right { text-align: right !important; }
+.text-center { text-align: center !important; }
+.font-bold { font-weight: 700; color: #0f172a; }
+.text-success { color: #10b981; }
+.text-danger { color: #ef4444; }
+.stock-warning { color: #ef4444; font-weight: 700; }
+
+.loading-state, .error-state, .empty-state { padding: 3rem; text-align: center; color: #64748b; background: white; border-radius: 8px; border: 1px dashed #cbd5e1; }
+
+.badge { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.85rem; font-weight: 500; display: inline-block; }
+.badge-success { background: #d1fae5; color: #065f46; }
+.badge-danger { background: #fee2e2; color: #991b1b; }
+.badge-warning { background: #fef3c7; color: #92400e; }
+.badge-gray { background: #f1f5f9; color: #475569; }
+/* เพิ่ม/แก้ไข ใน <style scoped> ของหน้า orders.vue */
+.cancelled { 
+  background: #fef2f2; 
+  color: #ef4444; /* สีแดง */
+  border: 1px solid #fca5a5;
+}
+/* =========================================
+   6. Responsive (มือถือ)
+========================================= */
+@media (max-width: 768px) {
+  .form-grid, .content-grid { grid-template-columns: 1fr; }
+}

@@ -81,7 +81,7 @@
           <NuxtLink class="item" to="/admin/production" @click="closeDrawer">
             <span class="bullet"></span> รับเข้า (Receipts)
           </NuxtLink>
-          <NuxtLink class="item" to="/admin/movements" @click="closeDrawer">
+          <NuxtLink class="item" to="/admin/www" @click="closeDrawer">
             <span class="bullet"></span> เบิก/เคลื่อนไหว (Material)
           </NuxtLink>
         </div>
@@ -95,7 +95,7 @@
           <NuxtLink class="item" to="/admin/production" @click="closeDrawer">
             <span class="bullet"></span> การผลิต (เพิ่มสต็อก)
           </NuxtLink>
-          <NuxtLink class="item" to="/admin/stock/movements?type=product" @click="closeDrawer">
+          <NuxtLink class="item" to="/admin/movements" @click="closeDrawer">
             <span class="bullet"></span> ขายออก/เคลื่อนไหว (Product)
           </NuxtLink>
         </div>
@@ -126,33 +126,55 @@ const client = useSupabaseClient()
 const user = useSupabaseUser()
 const open = ref(false)
 const closeDrawer = () => {open.value = false}
-// เรียกใช้งาน Composable ที่เราสร้างไว้
+
+// ดึง Role จาก Composable
 const { role, isRoleLoading } = useUserRole()
+
+// ⭐️ 1. เพิ่ม roleLabel แปลงค่า role เป็นข้อความภาษาไทย (แก้ Error แดง)
+const roleLabel = computed(() => {
+  if (role.value === 'admin') return 'ผู้ดูแลระบบ (Admin)'
+  if (role.value === 'manager') return 'ผู้จัดการ (Manager)'
+  if (role.value === 'staff') return 'พนักงาน (Staff)'
+  return 'ไม่ทราบสถานะ'
+})
+
+// ⭐️ 2. เพิ่ม email สำหรับแสดงผลตรงด้านล่างของ Drawer
+const email = computed(() => user.value?.email)
+
+// ⭐️ 3. เพิ่มสถานะ loading สำหรับปุ่มกด
+const loading = ref(false)
 
 const isMenuOpen = ref(false)
 
-// ใช้ watchEffect เพื่อ log ค่า ID ทันทีที่มีการเปลี่ยนแปลง
 watchEffect(() => {
   if (user.value) {
     console.log("ID ที่กำลังใช้หาข้อมูลคือ:", user.value.id)
   }
 })
 
-// ฟังก์ชันสำหรับล็อกเอาต์
-const handleLogout = async () => {
-  isMenuOpen.value = false // ปิดการแสดงผลเมนู (ถ้ามีการใช้งานตัวแปรนี้)
-
-  // 1. สั่งออกจากระบบ Supabase
-  const { error } = await client.auth.signOut()
+// ⭐️ 4. เปลี่ยนชื่อเป็น logout ให้ตรงกับ Template (@click="logout")
+const logout = async () => {
+  if (loading.value) return // กันกดรัว
+  loading.value = true
   
-  if (!error) {
-    // 2. ⭐️ บังคับล้างแคชข้อมูลเก่าทั้งหมด (ลบ Role และข้อมูล Profile ออกจากหน่วยความจำ Nuxt ทันที)
+  isMenuOpen.value = false 
+  open.value = false // ปิดเมนู Drawer ด้วย
+
+  try {
+    // 1. สั่งออกจากระบบ Supabase
+    const { error } = await client.auth.signOut()
+    if (error) throw error
+    
+    // 2. ล้างแคชข้อมูลเก่า
     clearNuxtData()
 
     // 3. นำทางกลับไปที่หน้า Login
     navigateTo('/login')
-  } else {
+  } catch (error) {
     console.error("เกิดข้อผิดพลาดในการออกจากระบบ:", error.message)
+    alert('ไม่สามารถออกจากระบบได้ กรุณาลองใหม่อีกครั้ง')
+  } finally {
+    loading.value = false
   }
 }
 </script>

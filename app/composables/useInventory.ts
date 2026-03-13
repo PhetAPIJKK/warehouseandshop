@@ -1,5 +1,27 @@
 export const useInventory = () => {
   const client = useSupabaseClient()
+  // ฟังก์ชันใหม่: สำหรับอัปโหลดรูปขึ้น Supabase Storage
+  const uploadImage = async (file) => {
+    // สร้างชื่อไฟล์ใหม่ไม่ให้ซ้ำกันโดยใช้ timestamp
+    const fileName = `${Date.now()}-${file.name}`
+
+    // อัปโหลดไฟล์
+    const { data, error } = await client.storage
+      .from('image_product')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false
+      })
+
+    if (error) return { error }
+
+    // ดึง URL แบบ Public เพื่อเอาไปบันทึกลงตาราง products
+    const { data: { publicUrl } } = client.storage
+      .from('image_product')
+      .getPublicUrl(fileName)
+
+    return { publicUrl }
+  }
 
   // 1. ดึงข้อมูลสินค้าทั้งหมดสำหรับหน้าตาราง (แบบปลอดภัย ไม่ Join ป้องกัน Error)
   const getInventoryData = () => {
@@ -36,7 +58,7 @@ export const useInventory = () => {
     // ใส่ข้อมูลคนสร้างลงไปในก้อนข้อมูลสินค้า
     const payloadToInsert = {
       ...productData,
-      created_by: userId 
+      created_by: userId
     }
 
     // 4.2 จังหวะที่ 1: บันทึกข้อมูลลงตาราง products
@@ -98,7 +120,7 @@ export const useInventory = () => {
     if (fetchError) return { error: fetchError }
 
     const currentStock = product.stock_qty || 0
-    
+
     // ⭐️ ปรับเงื่อนไขให้เข้ากับคำใหม่
     const isOut = ['issue', 'adjust'].includes(type)
     const qtyChange = isOut ? -Math.abs(qty) : Math.abs(qty)
@@ -112,9 +134,9 @@ export const useInventory = () => {
     const { error: updateError } = await client
       .from('products')
       .update({
-         stock_qty: balanceAfter,
-         updated_at: new Date().toISOString(),
-         updated_by: userId
+        stock_qty: balanceAfter,
+        updated_at: new Date().toISOString(),
+        updated_by: userId
       })
       .eq('id', productId)
 
@@ -139,7 +161,7 @@ export const useInventory = () => {
       })
 
     return { error: logError }
-  
+
   }
   const produceProduct = async (productId, qty, note = '') => {
     const { data: { user } } = await client.auth.getUser()
@@ -239,15 +261,16 @@ export const useInventory = () => {
     return { data, error }
   }
 
-  return { 
-    getInventoryData, 
-    getCategories, 
-    getProductById, 
-    addProduct, 
-    updateProduct ,
+  return {
+    getInventoryData,
+    getCategories,
+    getProductById,
+    addProduct,
+    updateProduct,
     adjustProductStock,
-    produceProduct,      
-    recordSale,         
-    getProductMovements
+    produceProduct,
+    recordSale,
+    getProductMovements,
+    uploadImage
   }
 }
