@@ -15,24 +15,13 @@ Create a `.env` file in the root directory of your project to store your sensiti
 ```bash
 touch .env
 
-
 2. Configure Credentials
 Add your Supabase URL and Public Anon Key to the .env file. You can find these in your Supabase Dashboard under Project Settings > API.
 # .env
 SUPABASE_URL="https://your-project-url.supabase.co"
 SUPABASE_ANON_KEY="your-public-anon-key"
 
-3. Initialize the Client
-Install the Supabase client library and initialize the connection within your application.
-npm install @supabase/supabase-js
-
-Connection Logic
-.env
-SUPABASE_URL=
-SUPABASE_KEY=
         
-
-
 ## Setup
 
 Make sure to install dependencies:
