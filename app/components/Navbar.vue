@@ -76,12 +76,12 @@ const { role, isRoleLoading } = useUserRole()
 
 const isMenuOpen = ref(false)
 
-watchEffect(() => {
-  if (user.value) {
-    console.log("ID ที่กำลังใช้หาข้อมูลคือ:", user.value.id)
+onMounted(async () => {
+  const { data } = await client.auth.getUser()
+  if (data.user) {
+    console.log("ID จริงที่ได้จากเบราว์เซอร์คือ:", data.user.id)
   }
 })
-
 const handleLogout = async () => {
   isMenuOpen.value = false 
 

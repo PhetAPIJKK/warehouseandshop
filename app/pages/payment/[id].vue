@@ -48,6 +48,7 @@ definePageMeta({ layout: 'default' })
 
 const route = useRoute()
 const client = useSupabaseClient()
+const user = useSupabaseUser() // ⭐️ 1. ดึงข้อมูล User ที่ล็อกอิน
 
 const order = ref(null)
 const loading = ref(true)
@@ -59,14 +60,24 @@ const previewUrl = ref(null)
 
 // 1. ดึงข้อมูลออเดอร์มาแสดงตอนโหลดหน้าเว็บ
 onMounted(async () => {
+    // ดักไว้ก่อน เผื่อ User หลุดล็อกอิน
+    if (!user.value) return navigateTo('/login') 
+
     const orderId = route.params.id
     const { data, error } = await client
         .from('orders')
         .select('*')
         .eq('id', orderId)
+        .eq('created_by_user_id', user.value.id) // ⭐️ 2. เช็คว่าเป็นออเดอร์ของ User คนนี้หรือไม่
         .single()
 
-    if (data) order.value = data
+    if (error) {
+        console.error('Fetch order error:', error.message)
+        order.value = null
+    } else {
+        order.value = data
+    }
+    
     loading.value = false
 })
 

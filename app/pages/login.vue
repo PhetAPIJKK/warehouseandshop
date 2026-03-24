@@ -4,10 +4,12 @@
       <h2>Warehouse System</h2>
       <p class="subtitle">กรุณาเข้าสู่ระบบเพื่อจัดการคลังสินค้า</p>
       
+      <input v-if="isRegistering" v-model="fullName" type="text" placeholder="ชื่อ-นามสกุล" class="input-field" />
+      
       <input v-model="email" type="email" placeholder="Email" class="input-field" />
       <input v-model="password" type="password" placeholder="Password" class="input-field" />
       
-      <input v-if="isRegistering" v-model="phone" type="text" placeholder="เบอร์โทรศัพท์" class="input-field" />
+      <input v-if="isRegistering" v-model="phone" type="text" placeholder="เบersโทรศัพท์" class="input-field" />
 
       <div class="buttons">
         <button v-if="!isRegistering" @click="handleAction('login')" :disabled="loading" class="btn-login">
@@ -28,51 +30,48 @@
   </div>
 </template>
 
-<<script setup>
+<script setup>
 const client = useSupabaseClient()
 const email = ref('')
 const password = ref('')
+const fullName = ref('') // 👈 เพิ่มตัวแปรรับชื่อ
 const phone = ref('')
 const loading = ref(false)
 const isRegistering = ref(false)
 
 const handleAction = async (type) => {
   if (!email.value || !password.value) return alert('กรุณากรอกข้อมูลให้ครบ')
+  if (isRegistering.value && !fullName.value) return alert('กรุณากรอกชื่อ-นามสกุลด้วยครับ')
   
   loading.value = true
   try {
     if (type === 'login') {
-      // 1. การเข้าสู่ระบบ
       const { error } = await client.auth.signInWithPassword({
         email: email.value,
         password: password.value,
       })
       if (error) throw error
       
-      // ⭐️ บังคับล้างแคชข้อมูลเดิมทั้งหมดของ Nuxt ทันทีที่ล็อกอินผ่าน
       clearNuxtData() 
-      
       alert('เข้าสู่ระบบสำเร็จ!')
       navigateTo('/') 
       
     } else {
-      // 2. การสมัครสมาชิก
+      // ⭐️ สมัครสมาชิกพร้อมส่ง Metadata ให้ SQL Trigger
       const { data, error: authError } = await client.auth.signUp({
         email: email.value,
         password: password.value,
         options: {
           data: {
-            full_name: 'New Member',
-            phone: phone.value
+            full_name: fullName.value, // 👈 ส่งไปให้ SQL แมพเข้าตาราง users
+            phone: phone.value         // 👈 ส่งเบอร์โทรไปด้วย
           }
         }
       })
       if (authError) throw authError
 
-      // ⭐️ บังคับล้างแคชข้อมูลเดิมทั้งหมดของ Nuxt ทันทีที่สมัครและล็อกอินอัตโนมัติผ่าน
       clearNuxtData()
-
-      alert('สมัครสมาชิกสำเร็จ! ข้อมูลโปรไฟล์และรหัสสมาชิกถูกสร้างแล้ว')
+      alert('สมัครสมาชิกสำเร็จ! ข้อมูลถูกเชื่อมโยงเรียบร้อยแล้ว')
       navigateTo('/') 
     }
   } catch (err) {
