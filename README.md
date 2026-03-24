@@ -26,13 +26,6 @@ SUPABASE_ANON_KEY="your-public-anon-key"
 
 Make sure to install dependencies:
 
-```bash
-#tailwindcss
-npm install tailwindcss @tailwindcss/vite
-then finish
-put code  in file nuxt.config.ts
-modules: ['@nuxtjs/supabase','@nuxtjs/tailwindcss']
-
 # npm
 npm install
 
@@ -44,8 +37,15 @@ yarn install
 
 # bun
 bun install
-```
 
+```bash
+#tailwindcss
+npm install tailwindcss @tailwindcss/vite
+then finish
+put code  in file nuxt.config.ts
+modules: ['@nuxtjs/supabase','@nuxtjs/tailwindcss']
+
+```
 ## Development Server
 
 Start the development server on `http://localhost:3000`:
