@@ -33,6 +33,11 @@
           </div>
         </div>
 
+        <div v-if="order.address" class="address-detail">
+  📍 ส่งไปที่: {{ order.address.address_detail }} 
+  (โทร: {{ order.address.phone }})
+</div>
+
         <div class="order-footer">
           <NuxtLink 
             v-if="order.status === 'pending_payment'" 
@@ -100,4 +105,61 @@ const formatDate = (dateStr) => {
 .empty-state { text-align: center; padding: 4rem; background: #f8fafc; border-radius: 12px; }
 .btn-shop { display: inline-block; margin-top: 1rem; color: #3b82f6; text-decoration: none; font-weight: 600; }
 .error-state { color: #ef4444; text-align: center; padding: 2rem; }
+order-body {
+  display: flex;
+  flex-direction: column; /* ปรับเป็นแนวตั้งเพื่อให้รองรับที่อยู่ยาวๆ */
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .order-body {
+    flex-direction: row; /* ถ้าจอใหญ่ให้แบ่งซ้ายขวา */
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+}
+
+.main-info {
+  flex: 1;
+}
+
+.address-info {
+  flex: 1;
+  background: #f8fafc;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #f1f5f9;
+}
+
+.address-box {
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #475569;
+}
+
+.address-text {
+  margin: 0.2rem 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.address-phone {
+  font-weight: 600;
+  color: #1e293b;
+  margin-top: 0.25rem;
+}
+
+.text-info-success {
+  color: #10b981;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.status-badge {
+  display: inline-block;
+  margin-top: 0.25rem;
+}
 </style>

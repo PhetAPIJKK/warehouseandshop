@@ -1,5 +1,5 @@
 export const useCart = () => {
-    // ⭐️ แก้ปัญหา "รีเฟรชแล้วหาย": ใช้ useCookie แทน useState
+    // ใช้ Cookie เก็บตะกร้าเพื่อป้องกันรีเฟรชแล้วหาย
     const cart = useCookie<any[]>('shopping-cart', {
         default: () => [],
         watch: true,
@@ -7,7 +7,6 @@ export const useCart = () => {
     })
 
     const client = useSupabaseClient()
-    const user = useSupabaseUser()
 
     // 1. ฟังก์ชันเพิ่มสินค้าลงตะกร้า (พร้อมเช็คสต็อก)
     const addToCart = (product: any, qty = 1) => {
@@ -67,33 +66,33 @@ export const useCart = () => {
     const cartTotal = computed(() => cart.value.reduce((sum, item) => sum + item.total_price, 0))
     const cartItemCount = computed(() => cart.value.reduce((count, item) => count + item.qty, 0))
 
-    // 6. ⭐️ ฟังก์ชันดำเนินการสั่งซื้อ (Checkout Process)
-    const processCheckout = async (paymentMethod: string) => {
+    // 6. ⭐️ ฟังก์ชันดำเนินการสั่งซื้อ (Checkout Process) แบบ Full-Flow
+    // รับค่า paymentMethod และ addressId เข้ามาเพื่อบันทึกให้ครบถ้วน
+    const processCheckout = async (paymentMethod: string, addressId: string) => {
         if (cart.value.length === 0) return { error: { message: 'ตะกร้าสินค้าว่างเปล่า' } }
+        if (!addressId) return { error: { message: 'กรุณาเลือกที่อยู่สำหรับจัดส่ง' } }
 
-        // ดึง Auth User
+        // ดึง Auth User แบบชัวร์ๆ
         const { data: { user: authUser }, error: authError } = await client.auth.getUser()
         if (authError || !authUser) return { error: { message: 'กรุณาล็อกอินใหม่อีกครั้ง' } }
 
-       try {
-        // 1. ⭐️ เพิ่มคำว่า role เข้าไปใน .select() เพื่อดึงตำแหน่งของผู้ใช้ออกมาด้วย
-        const { data: dbUser, error: dbUserError } = await client
-            .from('users')
-            .select('id, member_id, role') 
-            .eq('id', authUser.id)
-            .single()
+        try {
+            // 1. ตรวจสอบสิทธิ์ผู้ใช้งาน (Role)
+            const { data: dbUser, error: dbUserError } = await client
+                .from('users')
+                .select('id, member_id, role') 
+                .eq('id', authUser.id)
+                .single()
 
-        if (dbUserError || !dbUser) throw new Error('ไม่พบข้อมูลผู้ใช้งานในระบบ')
+            if (dbUserError || !dbUser) throw new Error('ไม่พบข้อมูลผู้ใช้งานในระบบ')
 
-        // 2. ⭐️ เพิ่มเงื่อนไขดักจับ Role ตรงนี้ครับ
-        // (เช็คชื่อ Role ให้ตรงกับในตาราง users ของคุณนะครับ สมมติว่าเป็น 'customer')
-        if (dbUser.role !== 'customer') {
-             return { error: { message: 'ขออภัยครับ เฉพาะบัญชีลูกค้า (Customer) เท่านั้นที่สามารถสั่งซื้อสินค้าหน้าร้านได้' } }
-        }
+            if (dbUser.role !== 'customer') {
+                 return { error: { message: 'ขออภัยครับ เฉพาะบัญชีลูกค้า (Customer) เท่านั้นที่สามารถสั่งซื้อสินค้าหน้าร้านได้' } }
+            }
 
             const orderNo = `WEB-${Date.now()}`
 
-            // ขั้นตอนที่ 1: สร้าง Order (ตาราง orders)
+            // 📦 ขั้นตอนที่ 1: สร้าง Order (บันทึกที่อยู่จัดส่งลงไปด้วย)
             const { data: order, error: orderError } = await client
                 .from('orders')
                 .insert({
@@ -102,15 +101,15 @@ export const useCart = () => {
                     member_id: dbUser.member_id,
                     created_by_user_id: dbUser.id,
                     total_amount: cartTotal.value,
-                    status: 'pending_payment'
+                    status: 'pending_payment',
+                    delivery_address_id: addressId // ⭐️ โยงกับที่อยู่ที่ลูกค้าเลือก
                 })
                 .select()
                 .single()
 
             if (orderError) throw orderError
 
-            // ขั้นตอนที่ 2: บันทึกรายการสินค้า (ตาราง order_items)
-            // ⭐️ ตรงนี้คือการย้ายข้อมูลจาก "ตะกร้าใน Cookie" ลงสู่ "ฐานข้อมูล"
+            // 🛒 ขั้นตอนที่ 2: บันทึกรายการสินค้าในตะกร้าลงฐานข้อมูล
             const orderItems = cart.value.map(item => ({
                 order_id: order.id,
                 product_id: item.product_id,
@@ -121,7 +120,7 @@ export const useCart = () => {
             const { error: itemError } = await client.from('order_items').insert(orderItems)
             if (itemError) throw itemError
 
-            // ขั้นตอนที่ 3: บันทึกข้อมูลการชำระเงินเริ่มต้น (ตาราง payments)
+            // 💳 ขั้นตอนที่ 3: ตั้งต้นข้อมูลการชำระเงิน
             const { error: paymentError } = await client.from('payments').insert({
                 order_id: order.id,
                 payment_method: paymentMethod,
@@ -130,7 +129,7 @@ export const useCart = () => {
             })
             if (paymentError) throw paymentError
 
-            // สำเร็จแล้วล้างตะกร้า
+            // ✨ สำเร็จแล้วล้างตะกร้าได้เลย
             clearCart()
             return { data: order, error: null }
 

@@ -42,6 +42,30 @@
             </div>
 
             <div class="cart-summary-card">
+                <div class="address-selection-box">
+                    <h3 style="border: none; padding: 0; margin-bottom: 1rem;">📍 ที่อยู่จัดส่ง</h3>
+
+                    <div v-if="isLoadingAddresses" class="text-muted" style="font-size: 0.9rem;">กำลังโหลดที่อยู่...
+                    </div>
+
+                    <div v-else-if="addresses.length === 0" class="no-address-box">
+                        <p style="font-size: 0.85rem; color: #ef4444; margin-bottom: 0.5rem;">ยังไม่มีที่อยู่จัดส่ง</p>
+                        <NuxtLink to="/profile" class="btn-add-small">+ เพิ่มที่อยู่ใหม่</NuxtLink>
+                    </div>
+
+                    <div v-else class="address-list">
+                        <label v-for="addr in addresses" :key="addr.id" class="address-option"
+                            :class="{ 'selected': selectedAddressId === addr.id }">
+                            <input type="radio" v-model="selectedAddressId" :value="addr.id" style="display: none;" />
+                            <div class="addr-content">
+                                <strong>{{ addr.label }}</strong>
+                                <p class="text-muted" style="font-size: 0.8rem; margin: 2px 0;">{{ addr.address_detail
+                                    }}</p>
+                                <span style="font-size: 0.8rem;">📞 {{ addr.phone }}</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
                 <h3>สรุปคำสั่งซื้อ</h3>
                 <div class="summary-row">
                     <span>จำนวนสินค้าทั้งหมด</span>
@@ -79,24 +103,31 @@
 <script setup>
 definePageMeta({ layout: 'default' })
 
-// ✅ รวมการดึงค่าจาก useCart() ไว้ในที่เดียว เพื่อป้องกัน Error ประกาศตัวแปรซ้ำ
-const { 
-  cart, 
-  updateQty, 
-  removeFromCart, 
-  cartTotal, 
-  cartItemCount, 
-  processCheckout 
-} = useCart()
+const { cart, updateQty, removeFromCart, cartTotal, cartItemCount, processCheckout } = useCart()
+const { fetchAddresses } = useAddress() // ⭐️ เรียกใช้ useAddress เพื่อดึงข้อมูลที่อยู่
 
+const addresses = ref([])
+const selectedAddressId = ref('')
 const paymentMethod = ref('bank_transfer')
 const isCheckingOut = ref(false)
+const isLoadingAddresses = ref(true)
+
+// โหลดข้อมูลที่อยู่เมื่อเปิดหน้าเว็บ
+onMounted(async () => {
+    addresses.value = await fetchAddresses()
+    if (addresses.value.length > 0) {
+        selectedAddressId.value = addresses.value[0].id // เลือกที่อยู่อันแรกเป็นค่าเริ่มต้น
+    }
+    isLoadingAddresses.value = false
+})
 
 const handleCheckout = async () => {
-    // ป้องกันการกดซ้ำ
     if (isCheckingOut.value) return
+    if (!selectedAddressId.value) {
+        alert('กรุณาเลือกที่อยู่จัดส่งก่อนครับ')
+        return
+    }
 
-    // ตรวจสอบยอดรวม (เข้าถึงค่าด้วย .value เสมอใน script setup)
     const total = cartTotal.value || 0
     const confirmCheckout = confirm(`ยืนยันคำสั่งซื้อยอดรวม ฿${total.toLocaleString()} ใช่หรือไม่?`)
     if (!confirmCheckout) return
@@ -104,13 +135,13 @@ const handleCheckout = async () => {
     isCheckingOut.value = true
 
     try {
-        // ส่งวิธีชำระเงินไปให้ฟังก์ชันใน useCart
-        const { error, data: order } = await processCheckout(paymentMethod.value)
+        // ⭐️ ส่งทั้ง วิธีชำระเงิน และ ID ที่อยู่ ไปยัง processCheckout
+        const { error, data: order } = await processCheckout(paymentMethod.value, selectedAddressId.value)
 
         if (error) {
             alert('เกิดข้อผิดพลาดในการสั่งซื้อ: ' + error.message)
         } else if (order && order.id) {
-            // สำเร็จแล้ว เด้งไปหน้าอัปโหลดสลิป พร้อมแนบ ID บิล
+            alert('สร้างคำสั่งซื้อสำเร็จ!')
             navigateTo(`/payment/${order.id}`)
         }
     } catch (err) {
@@ -348,5 +379,68 @@ const handleCheckout = async () => {
 
 .btn-checkout:hover {
     background: #059669;
+}
+
+.address-selection-box {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.address-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    max-height: 200px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.address-option {
+    display: block;
+    padding: 0.8rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.address-option:hover {
+    background: #f8fafc;
+}
+
+.address-option.selected {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    box-shadow: 0 0 0 1px #3b82f6;
+}
+
+.addr-content strong {
+    font-size: 0.9rem;
+    color: #1e293b;
+}
+
+.no-address-box {
+    text-align: center;
+    padding: 1rem;
+    background: #fdf2f2;
+    border-radius: 8px;
+}
+
+.btn-add-small {
+    font-size: 0.8rem;
+    color: #3b82f6;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+/* ปรับแต่ง Scrollbar เล็กน้อย */
+.address-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.address-list::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
 }
 </style>

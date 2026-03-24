@@ -3,32 +3,35 @@ export const useOrder = () => {
   const user = useSupabaseUser()
 
   /**
-   * 1. สำหรับลูกค้า (User): ดึงประวัติคำสั่งซื้อของตนเอง
-   * แก้ปัญหา UUID: "undefined" โดยการใช้ guard และ watch
+   * 1. สำหรับลูกค้า (User): ดึงประวัติคำสั่งซื้อของตนเอง + ที่อยู่จัดส่ง
+   * แก้ปัญหา UUID: "undefined" โดยการรอผลจาก client.auth.getUser()
    */
- const getUserOrders = async () => {
+  const getUserOrders = async () => {
     return await useAsyncData('user-orders-list', async () => {
       
-      // ⭐️ เปลี่ยนมาใช้ client.auth.getUser() ตรงๆ เพื่อความชัวร์ 100% ว่ารอจนกว่าจะได้ ID
+      // ⭐️ รอจนกว่าจะได้ ID จริงๆ มา (ป้องกัน Error SSR/Hydration)
       const { data: authData } = await client.auth.getUser()
       const currentUserId = authData.user?.id
 
       if (!currentUserId) {
-        console.warn("ไม่พบ User Session ยืนยันตัวตน")
-        return [] // ถ้ายังไม่ได้ล็อกอิน ให้คืนค่าว่างไปก่อน
+        console.warn("⚠️ ไม่พบ User Session ยืนยันตัวตน")
+        return []
       }
 
       console.log("✅ ID ที่ใช้ดึงออเดอร์สำเร็จคือ:", currentUserId)
 
-      // นำ ID ที่ได้ชัวร์ๆ ไปดึงข้อมูล
+      // ดึงออเดอร์ พร้อม Join ตาราง addresses เพื่อเอามาโชว์ที่หน้าประวัติ
       const { data, error } = await client
         .from('orders')
-        .select('*')
+        .select(`
+          *,
+          address:addresses(*)
+        `) // 📍 ดึงข้อมูลที่อยู่จัดส่งมาด้วย
         .eq('created_by_user_id', currentUserId)
         .order('created_at', { ascending: false })
         
       if (error) {
-        console.error("Error fetching user orders:", error.message)
+        console.error("❌ Error fetching user orders:", error.message)
         throw error
       }
       return data
@@ -37,16 +40,21 @@ export const useOrder = () => {
 
   /**
    * 2. สำหรับแอดมิน (Admin): ดูรายการออเดอร์ทั้งหมด (เว็บ/หน้าร้าน)
+   * แสดงชื่อลูกค้าจากตาราง members
    */
   const getOrdersData = async () => {
     return await useAsyncData('admin-all-orders-list', async () => {
       const { data, error } = await client
         .from('orders')
-        .select('*, members(full_name)')
+        .select(`
+          *,
+          members(full_name),
+          address:addresses(address_detail, phone)
+        `) // 📍 Admin เห็นทั้งชื่อลูกค้าและที่อยู่จัดส่ง
         .order('created_at', { ascending: false })
         
       if (error) {
-        console.error("Error fetching admin orders:", error.message)
+        console.error("❌ Error fetching admin orders:", error.message)
         throw error
       }
       return data
@@ -61,21 +69,43 @@ export const useOrder = () => {
     return await useAsyncData('admin-pending-payments-list', async () => {
       const { data, error } = await client
         .from('orders')
-        .select('*, members(full_name), payments(*)')
+        .select(`
+          *,
+          members(full_name),
+          payments(*)
+        `) // 📍 ดึงข้อมูลการชำระเงินและสลิปมาตรวจสอบ
         .eq('status', 'paid_wait_verify')
-        .order('created_at', { ascending: true }) // ลูกค้าที่แจ้งก่อน ต้องได้รับการตรวจก่อน
+        .order('created_at', { ascending: true }) // FIFO: แจ้งก่อน ตรวจก่อน
         
       if (error) {
-        console.error("Error fetching pending payments:", error.message)
+        console.error("❌ Error fetching pending payments:", error.message)
         throw error
       }
       return data
     })
   }
 
+  /**
+   * 4. ฟังก์ชันเสริม: อัปเดตสถานะออเดอร์ (แถมให้สำหรับแอดมินกด Approve/Reject)
+   */
+  const updateOrderStatus = async (orderId, newStatus) => {
+    const { data, error } = await client
+      .from('orders')
+      .update({ 
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', orderId)
+      .select()
+
+    if (error) throw error
+    return data
+  }
+
   return {
     getUserOrders,
     getOrdersData,
-    getPendingPayments
+    getPendingPayments,
+    updateOrderStatus
   }
 }

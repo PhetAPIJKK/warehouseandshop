@@ -1,113 +1,32 @@
 <template>
-  <div class="auth-container">
-    <div class="auth-card">
-      <h2>แก้ไขโปรไฟล์</h2>
-      <p class="subtitle">จัดการข้อมูลส่วนตัวของคุณ</p>
-
-      <div v-if="isProfileLoading">กำลังโหลดข้อมูล...</div>
-
-      <form v-else @submit.prevent="handleUpdate">
-
-        <div class="input-group">
-          <label>ระดับสิทธิ์ผู้ใช้งาน (Role)</label>
-          <div class="role-badge">
-            <span v-if="isRoleLoading">กำลังตรวจสอบ...</span>
-
-            <span v-else-if="role">{{ role.toUpperCase() }}</span>
-
-            <span v-else style="color: red;">
-              ไม่พบข้อมูลสิทธิ์ (Session ID: {{ user ? user.id : 'ไม่มี User ล็อกอิน' }})
-            </span>
-          </div>
-        </div>
-
-        <div class="input-group">
-          <label>ชื่อ-นามสกุล</label>
-          <input v-model="profileData.full_name" type="text" required />
-        </div>
-
-        <div class="input-group">
-          <label>เบอร์โทรศัพท์</label>
-          <input v-model="profileData.phone" type="text" required />
-        </div>
-
-        <button type="submit" :disabled="loading" class="btn-primary">
-          {{ loading ? 'กำลังบันทึก...' : 'บันทึกการเปลี่ยนแปลง' }}
-        </button>
-      </form>
+  <div class="max-w-3xl mx-auto p-4 md:p-8 min-h-screen">
+    
+    <div class="mb-8 border-b border-gray-200 pb-6">
+      <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">จัดการบัญชีผู้ใช้</h1>
+      <p class="text-gray-500 mt-2 text-sm md:text-base">อัปเดตข้อมูลส่วนตัวและจัดการสมุดที่อยู่จัดส่งของคุณ</p>
     </div>
+
+    <div class="flex flex-col space-y-8">
+       <AddressManager />
+
+
+
+       <ProfileForm />
+    </div>
+
   </div>
 </template>
 
 <script setup>
-
-middleware: [
-  function (to, from) {
-    const user = useSupabaseUser()
-    // ถ้าไม่มีข้อมูล User ให้เด้งกลับไปหน้า Login
-    if (!user.value) {
-      return navigateTo('/login')
+// ดักจับคนยังไม่ล็อกอิน
+definePageMeta({
+  middleware: [
+    function (to, from) {
+      const user = useSupabaseUser()
+      if (!user.value) {
+        return navigateTo('/login')
+      }
     }
-  }
-]
-
-const { getProfile, updateProfile } = useProfile()// เรียกใช้ Logic จาก composable
-const { data: profile, pending: isProfileLoading } = await getProfile()
-const { role, isRoleLoading } = useUserRole()
-
-const loading = ref(false)
-
-// เก็บข้อมูลใน Reactive state
-const profileData = ref({
-  full_name: profile.value?.full_name || '',
-  phone: profile.value?.phone || ''
+  ]
 })
-
-const handleUpdate = async () => {
-  loading.value = true
-  try {
-    await updateProfile({
-      full_name: profileData.value.full_name,
-      phone: profileData.value.phone
-    })
-    alert('อัปเดตข้อมูลสำเร็จ!')
-  } catch (err) {
-    alert('เกิดข้อผิดพลาด: ' + err.message)
-  } finally {
-    loading.value = false
-  }
-}
 </script>
-
-<style scoped>
-/* ใส่ CSS เดิมที่คุณมีได้เลยครับ */
-.auth-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 80vh;
-}
-
-.auth-card {
-  background: white;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 400px;
-}
-
-.input-group {
-  margin-bottom: 1rem;
-}
-
-.btn-primary {
-  width: 100%;
-  padding: 10px;
-  background: #4f46e5;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-}
-</style>
