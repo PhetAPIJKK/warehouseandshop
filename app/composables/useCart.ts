@@ -75,15 +75,21 @@ export const useCart = () => {
         const { data: { user: authUser }, error: authError } = await client.auth.getUser()
         if (authError || !authUser) return { error: { message: 'กรุณาล็อกอินใหม่อีกครั้ง' } }
 
-        try {
-            // ดึงข้อมูลจากตาราง users เพื่อเอา member_id
-            const { data: dbUser, error: dbUserError } = await client
-                .from('users')
-                .select('id, member_id')
-                .eq('id', authUser.id)
-                .single()
+       try {
+        // 1. ⭐️ เพิ่มคำว่า role เข้าไปใน .select() เพื่อดึงตำแหน่งของผู้ใช้ออกมาด้วย
+        const { data: dbUser, error: dbUserError } = await client
+            .from('users')
+            .select('id, member_id, role') 
+            .eq('id', authUser.id)
+            .single()
 
-            if (dbUserError || !dbUser) throw new Error('ไม่พบข้อมูลผู้ใช้งานในระบบ')
+        if (dbUserError || !dbUser) throw new Error('ไม่พบข้อมูลผู้ใช้งานในระบบ')
+
+        // 2. ⭐️ เพิ่มเงื่อนไขดักจับ Role ตรงนี้ครับ
+        // (เช็คชื่อ Role ให้ตรงกับในตาราง users ของคุณนะครับ สมมติว่าเป็น 'customer')
+        if (dbUser.role !== 'customer') {
+             return { error: { message: 'ขออภัยครับ เฉพาะบัญชีลูกค้า (Customer) เท่านั้นที่สามารถสั่งซื้อสินค้าหน้าร้านได้' } }
+        }
 
             const orderNo = `WEB-${Date.now()}`
 

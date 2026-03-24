@@ -109,7 +109,7 @@ const handleAddToCart = () => {
 
 .sku-badge { display: inline-block; background: #f1f5f9; color: #475569; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.85rem; font-weight: 600; margin-bottom: 1rem; }
 .product-title { font-size: 2.5rem; font-weight: 800; color: #0f172a; margin: 0 0 1rem 0; line-height: 1.2; }
-.product-price { font-size: 2rem; font-weight: 800; color: #3b82f6; margin-bottom: 2rem; }
+.product-price { font-size: 2rem; font-weight: 800; color: #ff8fa3; margin-bottom: 2rem; }
 
 .product-description { margin-bottom: 2rem; }
 .product-description h3 { font-size: 1.1rem; color: #1e293b; margin-bottom: 0.5rem; }
@@ -131,4 +131,8 @@ const handleAddToCart = () => {
 .btn-add-to-cart-large { flex-grow: 1; background: #0f172a; color: white; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; padding: 0 1.5rem; height: 48px; transition: background 0.2s; }
 .btn-add-to-cart-large:hover:not(:disabled) { background: #1e293b; }
 .btn-add-to-cart-large:disabled { background: #cbd5e1; cursor: not-allowed; }
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #ffd6df;
+  border-radius: 10px;
+}
 </style>

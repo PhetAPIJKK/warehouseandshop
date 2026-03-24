@@ -1,14 +1,14 @@
 <template>
   <nav class="navbar-container">
     <div class="nav-left">
-      <button v-if="user" @click="isMenuOpen = !isMenuOpen" class="hamburger-btn">
-        ☰
-      </button>
-
-      <div class="brand">
-        <span class="logo-icon">📦</span>
-        <span class="logo-text">WAREHOUSE</span>
-      </div>
+      <NuxtLink to="/" class="absolute left-4 md:left-8 top-1 md:top-2 w-16 h-16 md:w-28 md:h-28 z-50">
+        <!-- เปลี่ยน /path-to-your-logo.png เป็นที่อยู่ไฟล์รูปโลโก้ของคุณ -->
+        <img 
+          src="../assets/logo/Logo2.png" 
+          alt="Shop Logo" 
+          class="w-full h-full rounded-full border-[3px] border-white shadow-md bg-pink-50 object-cover" 
+        />
+      </NuxtLink>
     </div>
 
     <div class="nav-right">
@@ -25,6 +25,10 @@
         <span v-if="user" class="user-email">{{ user.email }}</span>
         <NuxtLink v-else to="/login" class="btn-login">เข้าสู่ระบบ</NuxtLink>
       </div>
+
+      <button v-if="user" @click="isMenuOpen = !isMenuOpen" class="hamburger-btn">
+        ☰
+      </button>
     </div>
 
     <Transition name="slide">
@@ -67,43 +71,27 @@
 const client = useSupabaseClient()
 const user = useSupabaseUser()
 
-// ⭐️ แก้ไข: ต้องมีวงเล็บ () หลัง useCart
 const { cartItemCount, clearCart } = useCart()
 const { role, isRoleLoading } = useUserRole()
 
 const isMenuOpen = ref(false)
 
-// ใช้ watchEffect เพื่อ log ค่า ID ทันทีที่มีการเปลี่ยนแปลง
 watchEffect(() => {
   if (user.value) {
     console.log("ID ที่กำลังใช้หาข้อมูลคือ:", user.value.id)
   }
 })
 
-// ใน <script setup> ของ Navbar.vue
-
 const handleLogout = async () => {
-  // 1. ปิดเมนูทันที
   isMenuOpen.value = false 
 
   try {
-    // 2. สั่ง Logout จาก Supabase Auth
     const { error } = await client.auth.signOut()
     if (error) throw error
 
-    // 3. ⭐️ ล้างข้อมูลในตะกร้าสินค้า (ป้องกัน User คนถัดไปเห็นของในตะกร้าเรา)
     if (clearCart) clearCart()
-
-    // 4. ⭐️ ล้างแคช useAsyncData ทั้งหมด (รวมถึง user-orders-list ที่เราเพิ่งทำไป)
-    // การไม่ใส่ parameter ใน clearNuxtData() จะเป็นการล้างแคชทุกอย่างในแอป
     clearNuxtData() 
-
-    // 5. นำทางไปหน้า Login
     await navigateTo('/login')
-    
-    // 6. (Optional) Reload หน้าเว็บเพื่อให้ State ทุกอย่าง Clean 100%
-    // window.location.reload() 
-
   } catch (error) {
     console.error("เกิดข้อผิดพลาดในการออกจากระบบ:", error.message)
     alert("ไม่สามารถออกจากระบบได้ กรุณาลองใหม่อีกครั้ง")
@@ -112,13 +100,12 @@ const handleLogout = async () => {
 </script>
 
 <style scoped>
-/* --- ส่วนเดิมของคุณที่ปรับแต่งเล็กน้อยให้เนียนขึ้น --- */
 .navbar-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0.8rem 5%;
-  background: #ffffff;
+  background: #ff8fA3;
   border-bottom: 1px solid #f0f0f0;
   position: sticky;
   top: 0;
@@ -126,10 +113,11 @@ const handleLogout = async () => {
 }
 
 .nav-left { display: flex; align-items: center; gap: 1rem; }
-.hamburger-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #4f46e5; }
+/* ปรับระยะห่างของแฮมเบอร์เกอร์เล็กน้อยเพื่อให้ดูสวยงามเมื่ออยู่ขวาสุด */
+.hamburger-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #4f46e5; margin-left: 0.5rem; }
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; color: #4f46e5; font-size: 1.2rem; text-decoration: none; }
 
-.nav-right { display: flex; align-items: center; gap: 2rem; }
+.nav-right { display: flex; align-items: center; gap: 1.5rem; }
 .nav-links { display: flex; gap: 1.5rem; align-items: center; }
 .nav-link { text-decoration: none; color: #666; font-size: 0.95rem; font-weight: 500; }
 .nav-link:hover { color: #4f46e5; }
@@ -163,7 +151,17 @@ const handleLogout = async () => {
 
 /* Sidebar Drawer */
 .menu-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 2000; }
-.menu-drawer { width: 280px; height: 100%; background: white; padding: 1.5rem; box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1); display: flex; flex-direction: column; }
+.menu-drawer { 
+  width: 280px; 
+  height: 100%; 
+  background: white; 
+  padding: 1.5rem; 
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1); /* ⭐️ เปลี่ยนทิศทางเงาให้สมจริง */
+  display: flex; 
+  flex-direction: column; 
+  position: absolute; /* ⭐️ จุดที่ 2: บังคับให้อยู่ในกรอบแบบ Absolute */
+  right: 0; /* ⭐️ จุดที่ 2: ดันไปชิดขวาสุดของหน้าจอ */
+}
 .menu-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid #eee; padding-bottom: 1rem; }
 .menu-header h3 { font-size: 1.1rem; margin: 0; color: #1f2937; }
 .close-btn { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #9ca3af; }
@@ -185,10 +183,10 @@ const handleLogout = async () => {
 .menu-item:hover { background: #f3f4f6; color: #4f46e5; }
 .admin-link { color: #4f46e5; font-weight: 600; }
 
-.logout { color: #ef4444; margin-top: auto; border-top: 1px solid #eee; padding-top: 1rem; border-radius: 0; }
+.logout { color: #ef4444; margin-top: auto; border-top: 1px solid #eee; padding-top: 1rem; border-radius: 0; cursor: pointer; width: 100%; text-align: left; background: none; border-left: none; border-right: none; border-bottom: none; font-family: inherit;}
 .logout:hover { background: #fef2f2; color: #dc2626; }
 
-/* Animation */
-.slide-enter-active, .slide-leave-active { transition: transform 0.3s ease; }
-.slide-enter-from, .slide-leave-to { transform: translateX(-100%); }
+/* ⭐️ จุดที่ 3: แก้ Animation ให้สไลด์มาจากฝั่งขวา (100% ค่าบวก) */
+.slide-enter-active, .slide-leave-active { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.slide-enter-from, .slide-leave-to { transform: translateX(100%); }
 </style>

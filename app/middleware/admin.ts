@@ -16,7 +16,7 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     .single()
 
   // 3. ถ้าไม่ใช่ admin ให้ดีดกลับไปหน้าแรก
-  if (error || profile?.role !== 'admin') {
-    return navigateTo('/') 
-  }
+  // if (error || profile?.role !== 'admin') {
+  //   return navigateTo('/') 
+  // }
 })

@@ -4,7 +4,7 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   srcDir: 'app/',
-  modules: ['@nuxtjs/supabase'],
+  modules: ['@nuxtjs/supabase','@nuxtjs/tailwindcss'],
   supabase: {
     redirect: false
   }
