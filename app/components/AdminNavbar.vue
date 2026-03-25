@@ -50,7 +50,7 @@
         <!-- กลุ่ม: ภาพรวม -->
         <div class="group">
           <div class="group-title">ภาพรวม</div>
-          <NuxtLink class="item" to="/admin/dashboard" @click="closeDrawer">
+          <NuxtLink class="item" to="/admin/" @click="closeDrawer">
             <span class="bullet"></span> Dashboard
           </NuxtLink>
           <NuxtLink class="item" to="/" @click="closeDrawer">
@@ -70,6 +70,12 @@
           <NuxtLink class="item" to="/admin/payments" @click="closeDrawer">
             <span class="bullet"></span> Payments (ตรวจสลิป)
           </NuxtLink>
+          <NuxtLink class="item" to="/admin/shipping" @click="closeDrawer">
+            <span class="bullet"></span> shipping (การจัดส่ง)
+          </NuxtLink>
+
+
+
         </div>
 
         <!-- กลุ่ม: คลังวัตถุดิบ -->
