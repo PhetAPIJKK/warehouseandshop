@@ -1,111 +1,182 @@
+// นิยาม Type สำหรับสถานะออเดอร์
+export type OrderStatus = 
+  | 'pending_payment' 
+  | 'paid_wait_verify' 
+  | 'pending_shipment' 
+  | 'shipped' 
+  | 'completed' 
+  | 'cancelled';
+
+// นิยาม Interface พื้นฐาน (ปรับตาม Schema ของคุณ)
+interface Member {
+  full_name: string;
+}
+
+interface Payment {
+  id: string;
+  order_id: string;
+  slip_image_url: string;
+  payment_status: string;
+  payment_amount: number;
+  slip_transfer_datetime: string;
+}
+
+interface Address {
+  id: string;
+  address_detail: string;
+  phone: string;
+  label?: string;
+}
+
+export interface Order {
+  id: string;
+  order_no: string;
+  total_amount: number;
+  status: OrderStatus;
+  created_at: string;
+  updated_at: string;
+  created_by_user_id: string;
+  tracking_no?: string;
+  carrier_name?: string;
+  members?: Member;
+  address?: Address;
+  payments?: Payment[];
+}
+
 export const useOrder = () => {
-  const client = useSupabaseClient()
-  const user = useSupabaseUser()
+  const client = useSupabaseClient();
 
   /**
-   * 1. สำหรับลูกค้า (User): ดึงประวัติคำสั่งซื้อของตนเอง + ที่อยู่จัดส่ง
-   * แก้ปัญหา UUID: "undefined" โดยการรอผลจาก client.auth.getUser()
+   * ------------------------------------------------------------
+   * [SECTION 1] สำหรับลูกค้า (User/Customer)
+   * ------------------------------------------------------------
    */
+
+  // 1.1 ดึงประวัติคำสั่งซื้อของตนเอง + ที่อยู่จัดส่ง
   const getUserOrders = async () => {
-    return await useAsyncData('user-orders-list', async () => {
-      
-      // ⭐️ รอจนกว่าจะได้ ID จริงๆ มา (ป้องกัน Error SSR/Hydration)
-      const { data: authData } = await client.auth.getUser()
-      const currentUserId = authData.user?.id
+    return await useAsyncData<Order[]>('user-orders-list', async () => {
+      const { data: authData } = await client.auth.getUser();
+      const currentUserId = authData.user?.id;
 
-      if (!currentUserId) {
-        console.warn("⚠️ ไม่พบ User Session ยืนยันตัวตน")
-        return []
-      }
+      if (!currentUserId) return [];
 
-      console.log("✅ ID ที่ใช้ดึงออเดอร์สำเร็จคือ:", currentUserId)
-
-      // ดึงออเดอร์ พร้อม Join ตาราง addresses เพื่อเอามาโชว์ที่หน้าประวัติ
       const { data, error } = await client
         .from('orders')
         .select(`
           *,
           address:addresses(*)
-        `) // 📍 ดึงข้อมูลที่อยู่จัดส่งมาด้วย
+        `)
         .eq('created_by_user_id', currentUserId)
-        .order('created_at', { ascending: false })
-        
-      if (error) {
-        console.error("❌ Error fetching user orders:", error.message)
-        throw error
-      }
-      return data
-    })
-  }
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data as Order[];
+    });
+  };
 
   /**
-   * 2. สำหรับแอดมิน (Admin): ดูรายการออเดอร์ทั้งหมด (เว็บ/หน้าร้าน)
-   * แสดงชื่อลูกค้าจากตาราง members
+   * ------------------------------------------------------------
+   * [SECTION 2] สำหรับแอดมิน (Admin)
+   * ------------------------------------------------------------
    */
+
+  // 2.1 ดึงรายการออเดอร์ทั้งหมด
   const getOrdersData = async () => {
-    return await useAsyncData('admin-all-orders-list', async () => {
+    return await useAsyncData<Order[]>('admin-all-orders-list', async () => {
       const { data, error } = await client
         .from('orders')
         .select(`
           *,
           members(full_name),
           address:addresses(address_detail, phone)
-        `) // 📍 Admin เห็นทั้งชื่อลูกค้าและที่อยู่จัดส่ง
-        .order('created_at', { ascending: false })
-        
-      if (error) {
-        console.error("❌ Error fetching admin orders:", error.message)
-        throw error
-      }
-      return data
-    })
-  }
+        `)
+        .order('created_at', { ascending: false });
 
-  /**
-   * 3. สำหรับแอดมิน (Admin): ดึงเฉพาะออเดอร์ที่รอตรวจสลิป
-   * FIFO: ดึงออเดอร์เก่าสุดขึ้นก่อน เพื่อให้แอดมินเคลียร์ตามคิว
-   */
+      if (error) throw error;
+      return data as Order[];
+    });
+  };
+
+  // 2.2 ดึงรายการ "รอตรวจสอบสลิป"
   const getPendingPayments = async () => {
-    return await useAsyncData('admin-pending-payments-list', async () => {
+    return await useAsyncData<Order[]>('admin-pending-payments-list', async () => {
       const { data, error } = await client
         .from('orders')
         .select(`
           *,
           members(full_name),
           payments(*)
-        `) // 📍 ดึงข้อมูลการชำระเงินและสลิปมาตรวจสอบ
+        `)
         .eq('status', 'paid_wait_verify')
-        .order('created_at', { ascending: true }) // FIFO: แจ้งก่อน ตรวจก่อน
-        
-      if (error) {
-        console.error("❌ Error fetching pending payments:", error.message)
-        throw error
-      }
-      return data
-    })
-  }
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      return data as Order[];
+    });
+  };
+
+  // 2.3 ดึงรายการ "รอจัดส่ง"
+  const getPendingShipments = async () => {
+    return await useAsyncData<Order[]>('admin-shipping-list', async () => {
+      const { data, error } = await client
+        .from('orders')
+        .select(`
+          *,
+          members(full_name),
+          address:addresses(*)
+        `)
+        .eq('status', 'pending_shipment')
+        .order('updated_at', { ascending: true });
+
+      if (error) throw error;
+      return data as Order[];
+    });
+  };
 
   /**
-   * 4. ฟังก์ชันเสริม: อัปเดตสถานะออเดอร์ (แถมให้สำหรับแอดมินกด Approve/Reject)
+   * ------------------------------------------------------------
+   * [SECTION 3] Actions (จัดการสถานะ)
+   * ------------------------------------------------------------
    */
-  const updateOrderStatus = async (orderId, newStatus) => {
+
+  // 3.1 อัปเดตสถานะทั่วไป
+  const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     const { data, error } = await client
       .from('orders')
-      .update({ 
+      .update({
         status: newStatus,
         updated_at: new Date().toISOString()
       })
       .eq('id', orderId)
-      .select()
+      .select();
 
-    if (error) throw error
-    return data
-  }
+    if (error) throw error;
+    return data;
+  };
+
+  // 3.2 ยืนยันการส่งสินค้า
+  const confirmOrderShipped = async (orderId: string, trackingNo: string, carrierName: string = 'Flash Express') => {
+    const { data, error } = await client
+      .from('orders')
+      .update({
+        status: 'shipped',
+        tracking_no: trackingNo,
+        carrier_name: carrierName,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', orderId)
+      .select();
+
+    if (error) throw error;
+    return data;
+  };
 
   return {
     getUserOrders,
     getOrdersData,
     getPendingPayments,
-    updateOrderStatus
-  }
-}
+    getPendingShipments,
+    updateOrderStatus,
+    confirmOrderShipped
+  };
+};
