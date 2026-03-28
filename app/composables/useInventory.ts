@@ -1,11 +1,20 @@
+// app/composables/useInventory.ts
+
 export const useInventory = () => {
   const client = useSupabaseClient()
-  // ฟังก์ชันใหม่: สำหรับอัปโหลดรูปขึ้น Supabase Storage
-  const uploadImage = async (file) => {
-    // สร้างชื่อไฟล์ใหม่ไม่ให้ซ้ำกันโดยใช้ timestamp
-    const fileName = `${Date.now()}-${file.name}`
+  const user = useSupabaseUser() // ดึง User แบบ Reactive สำหรับเช็คเบื้องต้น
 
-    // อัปโหลดไฟล์
+  // Helper: ดึง User ID แบบชัวร์ๆ สำหรับงานเขียน (Write Operations)
+  const getUserId = async () => {
+    const { data } = await client.auth.getUser()
+    return data.user?.id || null
+  }
+
+  // ==========================================
+  // 1. ระบบจัดการรูปภาพ (Storage)
+  // ==========================================
+  const uploadImage = async (file: File) => {
+    const fileName = `${Date.now()}-${file.name}`
     const { data, error } = await client.storage
       .from('image_product')
       .upload(fileName, file, {
@@ -15,7 +24,6 @@ export const useInventory = () => {
 
     if (error) return { error }
 
-    // ดึง URL แบบ Public เพื่อเอาไปบันทึกลงตาราง products
     const { data: { publicUrl } } = client.storage
       .from('image_product')
       .getPublicUrl(fileName)
@@ -23,12 +31,56 @@ export const useInventory = () => {
     return { publicUrl }
   }
 
-  // 1. ดึงข้อมูลสินค้าทั้งหมดสำหรับหน้าตาราง (แบบปลอดภัย ไม่ Join ป้องกัน Error)
+  // ==========================================
+  // 2. ระบบจัดการหมวดหมู่ (Product Categories)
+  // ==========================================
+  
+  // ดึงหมวดหมู่ทั้งหมด (ใช้ useAsyncData เพื่อให้หน้าบ้านกด refresh() ได้)
+  const getCategories = () => {
+    return useAsyncData('product-categories', async () => {
+      const { data, error } = await client
+        .from('product_categories') 
+        .select('*')
+        .order('name', { ascending: true })
+      if (error) throw error
+      return data || []
+    })
+  }
+
+  // เพิ่มหมวดหมู่ใหม่
+ const addCategory = async (payload) => {
+  // มั่นใจว่าชื่อตารางคือ product_categories (มี s) ตาม Schema
+  const { data, error } = await client
+    .from('product_categories') 
+    .insert([
+      { 
+        name: payload.name, 
+        description: payload.description 
+      }
+    ])
+    .select() // ต้องมี select() เพื่อให้คืนค่ากลับมาเช็คสำเร็จ
+
+  return { data, error }
+}
+
+  // ลบหมวดหมู่
+  const deleteCategory = async (id: string) => {
+    return await client
+      .from('product_categories')
+      .delete()
+      .eq('id', id)
+  }
+
+  // ==========================================
+  // 3. ระบบจัดการสินค้า (Products CRUD)
+  // ==========================================
+
+  // ดึงข้อมูลสินค้าทั้งหมด (Join product_categories เพื่อเอาชื่อมาโชว์)
   const getInventoryData = () => {
     return useAsyncData('products-list', async () => {
       const { data, error } = await client
         .from('products')
-        .select('*')
+        .select('*, product_categories(name)') // Join อัตโนมัติ
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -39,238 +91,150 @@ export const useInventory = () => {
     })
   }
 
-  // 2. ดึงหมวดหมู่ทั้งหมด (ไว้ทำ Dropdown ในหน้าฟอร์ม)
-  const getCategories = async () => {
-    return await client.from('product_categories').select('id, name')
+  const getProductById = async (id: string) => {
+    return await client
+      .from('products')
+      .select('*, product_categories(name)')
+      .eq('id', id)
+      .single()
   }
 
-  // 3. ดึงสินค้าตัวเดียว (สำหรับตอนเปิดหน้า Edit)
-  const getProductById = async (id) => {
-    return await client.from('products').select('*').eq('id', id).single()
-  }
+  const addProduct = async (productData: any) => {
+    const userId = await getUserId()
+    if (!userId) return { error: { message: 'กรุณา Login ใหม่ (ID: undefined)' } }
 
-  // 4. เพิ่มสินค้า พร้อมบันทึกประวัติการรับเข้าครั้งแรก (Stock Movement)
-  const addProduct = async (productData) => {
-    // 4.1 ตรวจสอบ User ที่ล็อกอินอยู่
-    const { data: { user } } = await client.auth.getUser()
-    const userId = user?.id
+    const payloadToInsert = { ...productData, created_by: userId }
 
-    // ใส่ข้อมูลคนสร้างลงไปในก้อนข้อมูลสินค้า
-    const payloadToInsert = {
-      ...productData,
-      created_by: userId
-    }
-
-    // 4.2 จังหวะที่ 1: บันทึกข้อมูลลงตาราง products
     const { data: newProduct, error: productError } = await client
       .from('products')
       .insert(payloadToInsert)
-      .select() // ต้องสั่ง .select() เพื่อขอ ID สินค้าที่เพิ่งสร้างกลับมาด้วย
+      .select()
       .single()
 
     if (productError) return { error: productError }
 
-    // 4.3 จังหวะที่ 2: ถ้าใส่จำนวนเริ่มต้นมาด้วย ให้บันทึกประวัติลง stock_movements
-    if (productData.stock_qty && productData.stock_qty > 0) {
-      const { error: logError } = await client.from('stock_movements').insert({
+    // บันทึกยอดยกมา (Initial Stock)
+    if (productData.stock_qty > 0) {
+      await client.from('stock_movements').insert({
         item_type: 'product',
-        movement_type: 'initial_stock', // ประเภทยอดยกมา
+        movement_type: 'initial_stock',
         ref_table: 'products',
         ref_id: newProduct.id,
         product_id: newProduct.id,
-        qty_in: productData.stock_qty, // จำนวนขาเข้า
-        qty_out: 0, // ขาออกเป็น 0
-        balance_after: productData.stock_qty, // ยอดคงเหลือ
-        created_by: userId // รหัสแอดมินที่ทำรายการ
+        qty_in: productData.stock_qty,
+        balance_after: productData.stock_qty,
+        created_by: userId
       })
-
-      if (logError) {
-        console.error('Failed to log movement:', logError.message)
-      }
     }
-
     return { error: null, data: newProduct }
   }
 
-  // 5. อัปเดตสินค้า พร้อมประทับตราคนแก้และเวลาอัตโนมัติ
-  const updateProduct = async (id, productData) => {
-    // 5.1 ดึงข้อมูล User ที่ล็อกอินอยู่ปัจจุบัน
-    const { data: { user } } = await client.auth.getUser()
-
-    // 5.2 นำข้อมูลเดิมมาผสมกับฟิลด์ updated_at และ updated_by
+  const updateProduct = async (id: string, productData: any) => {
+    const userId = await getUserId()
     const payloadWithAudit = {
       ...productData,
-      updated_at: new Date().toISOString(), // เวลาปัจจุบัน
-      updated_by: user?.id || null // ไอดีแอดมินที่กำลังกดเซฟ
+      updated_at: new Date().toISOString(),
+      updated_by: userId
     }
-
-    // 5.3 ส่งข้อมูลชุดสมบูรณ์ไปอัปเดตที่ฐานข้อมูล
     return await client.from('products').update(payloadWithAudit).eq('id', id)
   }
-  const adjustProductStock = async (productId, qty, type) => {
-    const { data: { user } } = await client.auth.getUser()
-    const userId = user?.id
 
-    const { data: product, error: fetchError } = await client
-      .from('products')
-      .select('stock_qty')
-      .eq('id', productId)
-      .single()
+  const deleteProduct = async (id: string) => {
+    return await client.from('products').delete().eq('id', id)
+  }
 
-    if (fetchError) return { error: fetchError }
+  // ==========================================
+  // 4. ระบบคลังสินค้า (Stock Movements)
+  // ==========================================
 
-    const currentStock = product.stock_qty || 0
-
-    // ⭐️ ปรับเงื่อนไขให้เข้ากับคำใหม่
+  const adjustProductStock = async (productId: string, qty: number, type: string) => {
+    const userId = await getUserId()
+    const { data: product } = await client.from('products').select('stock_qty').eq('id', productId).single()
+    
+    const currentStock = product?.stock_qty || 0
     const isOut = ['issue', 'adjust'].includes(type)
     const qtyChange = isOut ? -Math.abs(qty) : Math.abs(qty)
     const balanceAfter = currentStock + qtyChange
 
-    if (balanceAfter < 0) {
-      return { error: { message: 'สต็อกคงเหลือติดลบไม่ได้ครับ!' } }
-    }
+    if (balanceAfter < 0) return { error: { message: 'สต็อกคงเหลือติดลบไม่ได้!' } }
 
-    // อัปเดตตาราง products
-    const { error: updateError } = await client
-      .from('products')
-      .update({
-        stock_qty: balanceAfter,
-        updated_at: new Date().toISOString(),
-        updated_by: userId
-      })
-      .eq('id', productId)
+    await client.from('products').update({ stock_qty: balanceAfter, updated_by: userId }).eq('id', productId)
 
-    if (updateError) return { error: updateError }
-
-    // ⭐️ บันทึกประวัติลง stock_movements ให้ตรงกับ Constraint
-    const qtyIn = !isOut ? Math.abs(qty) : 0
-    const qtyOut = isOut ? Math.abs(qty) : 0
-
-    const { error: logError } = await client
-      .from('stock_movements')
-      .insert({
-        item_type: 'product',
-        movement_type: type, // จะส่ง receive, issue, หรือ adjust
-        ref_table: 'manual', // ⭐️ เปลี่ยนเป็น manual ตามกฎของคุณ
-        ref_id: null, // ใส่เป็น null เพราะเป็นการปรับมือ ไม่มีเอกสารอ้างอิง
-        product_id: productId,
-        qty_in: qtyIn,
-        qty_out: qtyOut,
-        balance_after: balanceAfter,
-        created_by: userId
-      })
-
+    const { error: logError } = await client.from('stock_movements').insert({
+      item_type: 'product',
+      movement_type: type,
+      ref_table: 'manual',
+      product_id: productId,
+      qty_in: !isOut ? Math.abs(qty) : 0,
+      qty_out: isOut ? Math.abs(qty) : 0,
+      balance_after: balanceAfter,
+      created_by: userId
+    })
     return { error: logError }
-
   }
-  const produceProduct = async (productId, qty, note = '') => {
-    const { data: { user } } = await client.auth.getUser()
-    const userId = user?.id
 
-    // จังหวะที่ 1: บันทึกข้อมูลลงตาราง production_logs
-    const { data: prodLog, error: prodError } = await client
-      .from('production_logs')
-      .insert({
-        product_id: productId,
-        qty_produced: qty,
-        produced_by: userId,
-        note: note
-      })
-      .select()
-      .single()
+  const produceProduct = async (productId: string, qty: number, note = '') => {
+    const userId = await getUserId()
+    const { data: prodLog, error: prodError } = await client.from('production_logs').insert({
+      product_id: productId, qty_produced: qty, produced_by: userId, note
+    }).select().single()
 
     if (prodError) return { error: prodError }
 
-    // จังหวะที่ 2: ดึงสต็อกปัจจุบันเพื่อคำนวณยอดคงเหลือใหม่
     const { data: product } = await client.from('products').select('stock_qty').eq('id', productId).single()
-    const currentStock = product?.stock_qty || 0
-    const newStock = currentStock + Math.abs(qty)
+    const newStock = (product?.stock_qty || 0) + Math.abs(qty)
 
-    // จังหวะที่ 3: อัปเดตยอดสต็อกในตาราง products 
-    await client.from('products').update({
-      stock_qty: newStock,
-      updated_at: new Date().toISOString(),
-      updated_by: userId
-    }).eq('id', productId)
+    await client.from('products').update({ stock_qty: newStock, updated_by: userId }).eq('id', productId)
 
-    // จังหวะที่ 4: บันทึกประวัติลง stock_movements
     const { error: moveError } = await client.from('stock_movements').insert({
       item_type: 'product',
-      movement_type: 'produce_in',     // ⭐️ ตรงตาม Constraint รับของเข้าจากการผลิต
-      ref_table: 'production_logs',    // ⭐️ อ้างอิงตาราง production_logs
-      ref_id: prodLog.id,              // ⭐️ เชื่อมโยง ID ของบิลผลิตที่เพิ่งสร้าง
+      movement_type: 'produce_in',
+      ref_table: 'production_logs',
+      ref_id: prodLog.id,
       product_id: productId,
       qty_in: Math.abs(qty),
-      qty_out: 0,
       balance_after: newStock,
       created_by: userId
     })
-
     return { error: moveError, data: prodLog }
   }
 
-  // ==========================================
-  // ฟังก์ชันที่ 2: ขายออก (ลดสต็อก)
-  // ==========================================
-  const recordSale = async (productId, qty) => {
-    const { data: { user } } = await client.auth.getUser()
-    const userId = user?.id
-
+  const recordSale = async (productId: string, qty: number) => {
+    const userId = await getUserId()
     const { data: product } = await client.from('products').select('stock_qty').eq('id', productId).single()
-    const currentStock = product?.stock_qty || 0
-    const newStock = currentStock - Math.abs(qty)
+    const newStock = (product?.stock_qty || 0) - Math.abs(qty)
 
-    if (newStock < 0) {
-      return { error: { message: 'สต็อกคงเหลือไม่พอขายครับ!' } }
-    }
+    if (newStock < 0) return { error: { message: 'สต็อกไม่พอขาย!' } }
 
-    // อัปเดตยอดสต็อกในตาราง products
-    await client.from('products').update({
-      stock_qty: newStock,
-      updated_at: new Date().toISOString(),
-      updated_by: userId
-    }).eq('id', productId)
-
-    // บันทึกประวัติลง stock_movements
-    const { error: moveError } = await client.from('stock_movements').insert({
+    await client.from('products').update({ stock_qty: newStock }).eq('id', productId)
+    return await client.from('stock_movements').insert({
       item_type: 'product',
-      movement_type: 'sale_out', // ⭐️ ตรงตาม Constraint การขายออก
-      ref_table: 'manual',       // ⭐️ ใช้ manual ไปก่อน (ถ้าอนาคตมีระบบออเดอร์ค่อยเปลี่ยนเป็น 'orders')
-      ref_id: null,
+      movement_type: 'sale_out',
+      ref_table: 'manual',
       product_id: productId,
-      qty_in: 0,
       qty_out: Math.abs(qty),
       balance_after: newStock,
       created_by: userId
     })
-
-    return { error: moveError }
   }
 
-  // ==========================================
-  // ฟังก์ชันที่ 3: ดึงประวัติความเคลื่อนไหว (Statement)
-  // ==========================================
-  const getProductMovements = async (productId) => {
-    // ดึงประวัติทั้งหมดของสินค้านั้นๆ เรียงจากใหม่ไปเก่า
-    const { data, error } = await client
-      .from('stock_movements')
-      .select('*')
-      .eq('product_id', productId)
-      .order('created_at', { ascending: false })
-
-    return { data, error }
+  const getProductMovements = async (productId: string) => {
+    return await client.from('stock_movements').select('*').eq('product_id', productId).order('created_at', { ascending: false })
   }
 
   return {
-    getInventoryData,
+    uploadImage,
     getCategories,
+    addCategory,
+    deleteCategory,
+    getInventoryData,
     getProductById,
     addProduct,
     updateProduct,
+    deleteProduct,
     adjustProductStock,
     produceProduct,
     recordSale,
-    getProductMovements,
-    uploadImage
+    getProductMovements
   }
 }

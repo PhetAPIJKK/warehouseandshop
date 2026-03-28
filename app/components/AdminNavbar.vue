@@ -101,6 +101,9 @@
           <NuxtLink class="item" to="/admin/production" @click="closeDrawer">
             <span class="bullet"></span> การผลิต (เพิ่มสต็อก)
           </NuxtLink>
+          <NuxtLink class="item" to="/admin/categories" @click="closeDrawer">
+            <span class="bullet"></span> การหมวดหมู่สินค้า
+          </NuxtLink>
           <NuxtLink class="item" to="/admin/movements" @click="closeDrawer">
             <span class="bullet"></span> ขายออก/เคลื่อนไหว (Product)
           </NuxtLink>

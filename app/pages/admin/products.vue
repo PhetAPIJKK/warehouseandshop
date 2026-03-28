@@ -6,6 +6,7 @@
         <p class="subtitle">แสดงรายการสินค้าทั้งหมดในโกดัง</p>
       </div>
       <NuxtLink to="/admin/addPd" class="btn-primary">+ เพิ่มสินค้าใหม่</NuxtLink>
+      
     </header>
 
     <div v-if="pending" class="loading-state">
