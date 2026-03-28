@@ -27,7 +27,7 @@ SUPABASE_ANON_KEY="your-public-anon-key"
 Make sure to install dependencies:
 
 # npm
-npm install
+npm install and npx nuxi prepare
 
 # pnpm
 pnpm install
